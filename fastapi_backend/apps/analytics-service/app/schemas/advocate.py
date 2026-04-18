@@ -43,7 +43,7 @@ class TopComplaintsResponse(BaseModel):
 # ─── Vulnerability Flags (AA4) ─────────────────────────────────────────────────
 
 class VulnerableWorker(BaseModel):
-    worker_id: str
+    anon_id: str = Field(..., description="One-way hash of worker_id (SHA-256 prefix) — raw ID never exposed")
     zone: str
     category: str
     prior_month_income: float
@@ -54,4 +54,5 @@ class VulnerabilityResponse(BaseModel):
     computed_at: str
     threshold_pct: float = Field(20.0, description="MoM drop threshold used")
     vulnerable_count: int
+    cohort_too_small: bool = Field(False, description="True if cohort < 5 (k-anonymity protection)")
     workers: List[VulnerableWorker]

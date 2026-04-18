@@ -77,7 +77,11 @@ def detect(shifts: List[Shift], z_threshold: float = 2.5, mom_drop_pct: float = 
                 baseline_mean=row['base_deduc_mean'],
                 baseline_std=deduc_std,
                 z=z_deduc,
-                explanation=explain_deduction_spike(row['deduction_pct'], row['base_deduc_mean'])
+                explanation=explain_deduction_spike(
+                    row['deduction_pct'], row['base_deduc_mean'],
+                    gross_earned=float(daily_df.loc[daily_df.index <= idx, 'gross_earned'].tail(7).sum()),
+                    currency=currency
+                )
             ))
         
         # Hourly rate drop
@@ -116,7 +120,11 @@ def detect(shifts: List[Shift], z_threshold: float = 2.5, mom_drop_pct: float = 
                 baseline_mean=prior_mean,
                 baseline_std=prior_std,
                 z=float(z_latest),
-                explanation=explain_deduction_spike(float(latest['deduction_pct']), prior_mean)
+                explanation=explain_deduction_spike(
+                    float(latest['deduction_pct']), prior_mean,
+                    gross_earned=float(latest['gross_earned']),
+                    currency=currency
+                )
             ))
 
     # MOM Income Drop (30-day trailing windows)
@@ -141,7 +149,12 @@ def detect(shifts: List[Shift], z_threshold: float = 2.5, mom_drop_pct: float = 
                     baseline_mean=prev_month,
                     baseline_std=0.0,
                     z=0.0, 
-                    explanation=explain_income_drop_mom(drop_pct / 100.0)
+                    explanation=explain_income_drop_mom(
+                        drop_pct / 100.0,
+                        prior_total=float(prev_month),
+                        current_total=float(last_month),
+                        currency=currency
+                    )
                 ))
 
     return anomalies

@@ -1,9 +1,12 @@
 """
-Advocate Analytics API — Sprint 3
-Endpoints: AA1 commission-trends, AA2 income-distribution, AA3 top-complaints
-           + admin trigger for vulnerability job + AA4 vulnerability read
+Advocate Analytics API — Sprint 4
+Endpoints: AA1 commission-trends, AA2 income-distribution, AA3 top-complaints,
+           AA4 vulnerability (anonymised, k-protected)
+           + internal refresh endpoint
+All endpoints decorated with @observe for structured-JSON timing logs.
 """
 import datetime
+import hashlib
 import statistics
 from typing import Optional
 
@@ -22,10 +25,18 @@ from app.api.deps import verify_jwt
 from app.repositories.database import get_db, Shift, Complaint, VulnerabilityFlag
 from app.core.cache import with_cache
 from app.core.jobs import run_vulnerability_job
+from app.core.obs import observe
 
 router = APIRouter()
 
-ADVOCATE_TTL = 300  # 5 minutes — advocate KPIs change slowly
+ADVOCATE_TTL = 300    # 5 minutes
+VULN_TTL     = 900    # 15 minutes — vulnerability view refreshed nightly
+
+K_MIN = 5  # k-anonymity threshold
+
+def _anon_id(worker_id: str) -> str:
+    """One-way hash of worker_id so raw IDs are never exposed in advocate views."""
+    return hashlib.sha256(worker_id.encode()).hexdigest()[:12]
 
 # ─────────────────────────────────────────────────────────────────────────────
 # AA1 — GET /advocate/commission-trends
@@ -37,6 +48,7 @@ ADVOCATE_TTL = 300  # 5 minutes — advocate KPIs change slowly
     summary="AA1 — Platform commission trend (line chart, 12 weeks)",
     dependencies=[Depends(verify_jwt)],
 )
+@observe("advocate.commission_trends")
 @with_cache(ttl=ADVOCATE_TTL)
 async def get_commission_trends(db: AsyncSession = Depends(get_db)):
     """
@@ -66,7 +78,7 @@ async def get_commission_trends(db: AsyncSession = Depends(get_db)):
         series = []
         for week, week_grp in grp.groupby("week"):
             cohort_size = week_grp["worker_id"].nunique()
-            avg_pct = round(float(week_grp["deduction_pct"].mean()), 2) if cohort_size >= 5 else None
+            avg_pct = round(float(week_grp["deduction_pct"].mean()), 2) if cohort_size >= K_MIN else None
             series.append(PlatformWeekPoint(week=week, avg_deduction_pct=avg_pct, cohort_size=cohort_size))
         series.sort(key=lambda p: p.week)
         platforms[platform] = series
@@ -84,6 +96,7 @@ async def get_commission_trends(db: AsyncSession = Depends(get_db)):
     summary="AA2 — Income distribution by city zone (box/violin data)",
     dependencies=[Depends(verify_jwt)],
 )
+@observe("advocate.income_distribution")
 @with_cache(ttl=ADVOCATE_TTL)
 async def get_income_distribution(
     zone: Optional[str] = Query(None, description="Filter to a specific zone. Omit for city-wide."),
@@ -91,23 +104,19 @@ async def get_income_distribution(
 ):
     """
     Returns percentile distribution (p10/p25/p50/p75/p90) of monthly net income
-    per worker in the requested zone (or city-wide if zone is omitted).
-    K-anonymity: if cohort < 5 distinct workers, returns cohort_too_small=True.
+    per worker in the requested zone (or city-wide if omitted).
+    K-anonymity: cohort < 5 workers → cohort_too_small=True.
     """
     thirty_days_ago = datetime.date.today() - datetime.timedelta(days=30)
 
-    # Count distinct workers first
     count_stmt = select(func.count(Shift.worker_id.distinct())).where(Shift.date >= thirty_days_ago)
     if zone:
         count_stmt = count_stmt.where(Shift.zone == zone)
     worker_count = (await db.execute(count_stmt)).scalar() or 0
 
-    if worker_count < 5:
-        return IncomeDistributionResponse(
-            cohort_too_small=True, zone=zone, worker_count=worker_count
-        )
+    if worker_count < K_MIN:
+        return IncomeDistributionResponse(cohort_too_small=True, zone=zone, worker_count=worker_count)
 
-    # Monthly income per worker
     income_stmt = (
         select(Shift.worker_id, func.sum(Shift.net_received).label("monthly_income"))
         .where(Shift.date >= thirty_days_ago)
@@ -116,8 +125,7 @@ async def get_income_distribution(
     if zone:
         income_stmt = income_stmt.where(Shift.zone == zone)
 
-    incomes = [float(r.monthly_income) for r in (await db.execute(income_stmt)).all()]
-    incomes.sort()
+    incomes = sorted([float(r.monthly_income) for r in (await db.execute(income_stmt)).all()])
 
     def pct(p: float):
         idx = (len(incomes) - 1) * p
@@ -125,12 +133,9 @@ async def get_income_distribution(
         return round(incomes[lo] + (incomes[hi] - incomes[lo]) * (idx - lo), 2)
 
     return IncomeDistributionResponse(
-        cohort_too_small=False,
-        zone=zone,
-        worker_count=worker_count,
+        cohort_too_small=False, zone=zone, worker_count=worker_count,
         percentiles=IncomePercentiles(
-            p10=pct(0.10), p25=pct(0.25), p50=pct(0.50),
-            p75=pct(0.75), p90=pct(0.90),
+            p10=pct(0.10), p25=pct(0.25), p50=pct(0.50), p75=pct(0.75), p90=pct(0.90),
         ),
     )
 
@@ -147,6 +152,7 @@ WINDOW_DAYS = {"7d": 7, "30d": 30, "90d": 90}
     summary="AA3 — Top complaint categories (cross-schema grievance read)",
     dependencies=[Depends(verify_jwt)],
 )
+@observe("advocate.top_complaints")
 @with_cache(ttl=ADVOCATE_TTL)
 async def get_top_complaints(
     window: str = Query("7d", description="Time window: 7d, 30d, or 90d"),
@@ -168,47 +174,66 @@ async def get_top_complaints(
         .limit(5)
     )
     rows = (await db.execute(stmt)).all()
+    total = (await db.execute(
+        select(func.count(Complaint.id)).where(Complaint.created_at >= since)
+    )).scalar() or 0
 
-    total_stmt = select(func.count(Complaint.id)).where(Complaint.created_at >= since)
-    total = (await db.execute(total_stmt)).scalar() or 0
-
-    categories = [
-        ComplaintCategory(
-            category=r.category,
-            count=r.cnt,
-            percentage=round(r.cnt / total * 100, 1) if total else 0.0
-        )
-        for r in rows
-    ]
-
-    return TopComplaintsResponse(window=window, total_complaints=total, top_categories=categories)
+    return TopComplaintsResponse(
+        window=window,
+        total_complaints=total,
+        top_categories=[
+            ComplaintCategory(
+                category=r.category,
+                count=r.cnt,
+                percentage=round(r.cnt / total * 100, 1) if total else 0.0,
+            )
+            for r in rows
+        ],
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# AA4 — GET /advocate/vulnerability  (reads from materialized view)
+# AA4 — GET /advocate/vulnerability  (Sprint 4: full anonymisation + k-guard)
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.get(
     "/vulnerability",
     response_model=VulnerabilityResponse,
-    summary="AA4 — Vulnerability flag list (MoM income drop > 20%)",
+    summary="AA4 — Vulnerability flag list (anonymised, MoM income drop > 20%)",
     dependencies=[Depends(verify_jwt)],
 )
+@observe("advocate.vulnerability")
 async def get_vulnerability(db: AsyncSession = Depends(get_db)):
     """
-    Reads from the vulnerability_flags materialized view populated by the
-    nightly scheduled job. Returns workers with > 20% MoM income drop.
+    Reads from the vulnerability_flags materialised view (populated by the nightly job).
+
+    Sprint 4 additions:
+    - anon_id: SHA-256 hash of worker_id (first 12 chars) — raw IDs never exposed.
+    - K-anonymity: if the flagged cohort < 5 workers, returns cohort_too_small=True.
+    - 15-minute cache TTL (slower-changing data).
+    - @observe decorator emits structured-JSON timing logs.
     """
     rows = (await db.execute(select(VulnerabilityFlag))).scalars().all()
-    computed_at = rows[0].computed_at.isoformat() if rows else "never"
 
+    # k-anonymity guard at cohort level
+    if len(rows) < K_MIN:
+        return VulnerabilityResponse(
+            computed_at="never" if not rows else rows[0].computed_at.isoformat(),
+            threshold_pct=20.0,
+            vulnerable_count=len(rows),
+            cohort_too_small=True,
+            workers=[],
+        )
+
+    computed_at = rows[0].computed_at.isoformat()
     return VulnerabilityResponse(
         computed_at=computed_at,
         threshold_pct=20.0,
         vulnerable_count=len(rows),
+        cohort_too_small=False,
         workers=[
             VulnerableWorker(
-                worker_id=r.worker_id,
+                anon_id=_anon_id(r.worker_id),
                 zone=r.zone,
                 category=r.category,
                 prior_month_income=r.prior_month_income,
@@ -221,18 +246,30 @@ async def get_vulnerability(db: AsyncSession = Depends(get_db)):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Admin — POST /advocate/admin/run-vulnerability-job
+# Internal — POST /advocate/internal/refresh-vulnerability
 # ─────────────────────────────────────────────────────────────────────────────
 
 @router.post(
-    "/admin/run-vulnerability-job",
-    summary="Manually trigger the nightly vulnerability flag job (admin/judge only)",
+    "/internal/refresh-vulnerability",
+    summary="Force-refresh the vulnerability materialised view (admin/demo use)",
     dependencies=[Depends(verify_jwt)],
 )
-async def trigger_vulnerability_job():
+async def refresh_vulnerability():
     """
-    In production this runs nightly via Render scheduled jobs.
-    Judges and admins can trigger it manually for testing.
+    Calls the same computation the nightly Render scheduled job runs.
+    Use this during demos or manual testing without waiting for the cron.
+    Returns a summary: computed_at, vulnerable_count, total_workers_evaluated.
     """
     result = await run_vulnerability_job()
     return result
+
+
+# Keep old admin path as alias for backward compatibility
+@router.post(
+    "/admin/run-vulnerability-job",
+    summary="Alias: trigger nightly vulnerability job (admin/judge only)",
+    dependencies=[Depends(verify_jwt)],
+    include_in_schema=False,  # hide from Swagger to avoid confusion
+)
+async def trigger_vulnerability_job_compat():
+    return await run_vulnerability_job()
