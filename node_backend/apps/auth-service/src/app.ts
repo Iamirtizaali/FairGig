@@ -51,6 +51,26 @@ export function buildApp(): Application {
   app.use(defaultRateLimit);
 
   // ── Swagger UI ─────────────────────────────────────────────────────────────
+  app.use(
+    '/docs',
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          scriptSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          styleSrc: ["'self'", "'unsafe-inline'", 'https:'],
+          imgSrc: ["'self'", 'data:'],
+          fontSrc: ["'self'", 'data:', 'https:'],
+          connectSrc: ["'self'"],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'none'"],
+          baseUri: ["'self'"],
+          formAction: ["'self'"],
+        },
+      },
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+    }),
+  );
   setupSwagger(app);
 
   // ── Routes ─────────────────────────────────────────────────────────────────
