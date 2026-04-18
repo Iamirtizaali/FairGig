@@ -1,0 +1,261 @@
+{
+  "info": {
+    "_postman_id": "fairgig-collection-v1",
+    "name": "FairGig API",
+    "description": "FairGig — Gig Worker Income & Rights Platform\n\nServices:\n- Auth Service        (port 3001)  /auth/v1/*\n- Earnings Service    (port 3002)  /earnings/v1/*\n- Certificate Service (port 3003)  /certificate/v1/*\n- Grievance Service   (port 3004)  /grievance/v1/*\n\nEnvironment variables to set:\n- {{baseUrl_auth}}, {{baseUrl_earnings}}, {{baseUrl_certificate}}, {{baseUrl_grievance}}\n- {{accessToken}} — auto-populated by Login/Register tests\n- {{shiftId}} — set manually after creating a shift",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl_auth",        "value": "http://localhost:3001" },
+    { "key": "baseUrl_earnings",    "value": "http://localhost:3002" },
+    { "key": "baseUrl_certificate", "value": "http://localhost:3003" },
+    { "key": "baseUrl_grievance",   "value": "http://localhost:3004" },
+    { "key": "accessToken",         "value": "" },
+    { "key": "shiftId",             "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Auth — Health",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl_auth}}/health", "host": ["{{baseUrl_auth}}"], "path": ["health"] } }
+        },
+        {
+          "name": "Earnings — Health",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl_earnings}}/health", "host": ["{{baseUrl_earnings}}"], "path": ["health"] } }
+        },
+        {
+          "name": "Certificate — Health",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl_certificate}}/health", "host": ["{{baseUrl_certificate}}"], "path": ["health"] } }
+        },
+        {
+          "name": "Grievance — Health",
+          "request": { "method": "GET", "header": [], "url": { "raw": "{{baseUrl_grievance}}/health", "host": ["{{baseUrl_grievance}}"], "path": ["health"] } }
+        }
+      ]
+    },
+    {
+      "name": "Auth /v1",
+      "item": [
+        {
+          "name": "Register",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.accessToken)pm.collectionVariables.set('accessToken',j.data.accessToken);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ali Raza\",\n  \"email\": \"ali@example.com\",\n  \"phone\": \"+923001234567\",\n  \"password\": \"mypassword1\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/register", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","register"] }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.accessToken)pm.collectionVariables.set('accessToken',j.data.accessToken);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"ali@example.com\",\n  \"password\": \"mypassword1\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/login", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","login"] }
+          }
+        },
+        {
+          "name": "Refresh Token",
+          "request": { "method": "POST", "header": [], "url": { "raw": "{{baseUrl_auth}}/auth/v1/refresh", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","refresh"] } }
+        },
+        {
+          "name": "Logout",
+          "request": { "method": "POST", "header": [], "url": { "raw": "{{baseUrl_auth}}/auth/v1/logout", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","logout"] } }
+        },
+        {
+          "name": "Forgot Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"email\": \"ali@example.com\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/forgot-password", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","forgot-password"] }
+          }
+        },
+        {
+          "name": "Reset Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"token\": \"<token-from-email>\",\n  \"newPassword\": \"newpassword1\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/reset-password", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","reset-password"] }
+          }
+        },
+        {
+          "name": "Get Me",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/me", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","me"] }
+          }
+        },
+        {
+          "name": "Update Me",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Ali Updated\",\n  \"language\": \"ur\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/me", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","me"] }
+          }
+        },
+        {
+          "name": "Change Password",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"oldPassword\": \"mypassword1\",\n  \"newPassword\": \"newpassword1\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/change-password", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","change-password"] }
+          }
+        },
+        {
+          "name": "Create Role Request",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"requestedRole\": \"employer\",\n  \"reason\": \"I want to post jobs.\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/role-requests", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","role-requests"] }
+          }
+        },
+        {
+          "name": "List Role Requests (Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/role-requests?page=1&limit=20", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","role-requests"], "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}] }
+          }
+        },
+        {
+          "name": "Approve Role Request (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/role-requests/<id>/approve", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","role-requests","<id>","approve"] }
+          }
+        },
+        {
+          "name": "Reject Role Request (Admin)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/role-requests/<id>/reject", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","role-requests","<id>","reject"] }
+          }
+        },
+        {
+          "name": "Update User Status (Admin)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"frozen\"\n}" },
+            "url": { "raw": "{{baseUrl_auth}}/auth/v1/admin/users/<user-id>/status", "host": ["{{baseUrl_auth}}"], "path": ["auth","v1","admin","users","<user-id>","status"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Earnings /v1",
+      "item": [
+        {
+          "name": "Reference — List Platforms",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/platforms", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","platforms"] }
+          }
+        },
+        {
+          "name": "Reference — List City Zones",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/city-zones", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","city-zones"] }
+          }
+        },
+        {
+          "name": "Shifts — Create",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.shift?.id)pm.collectionVariables.set('shiftId',j.data.shift.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"platformId\": \"<platform-cuid>\",\n  \"shiftDate\": \"2026-04-18\",\n  \"hoursWorked\": 6.5,\n  \"grossPay\": 1200,\n  \"deductions\": 100,\n  \"netPay\": 1100,\n  \"notes\": \"Night shift\"\n}" },
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts"] }
+          }
+        },
+        {
+          "name": "Shifts — List",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl_earnings}}/earnings/v1/shifts?page=1&limit=20",
+              "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts"],
+              "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}]
+            }
+          }
+        },
+        {
+          "name": "Shifts — Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}"] }
+          }
+        },
+        {
+          "name": "Shifts — Update",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"notes\": \"Updated note\",\n  \"hoursWorked\": 7\n}" },
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}"] }
+          }
+        },
+        {
+          "name": "Shifts — Delete",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}"] }
+          }
+        },
+        {
+          "name": "Screenshots — Presign Upload URL",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"mimeType\": \"image/jpeg\",\n  \"sizeBytes\": 512000\n}" },
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}/screenshots/presign", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}","screenshots","presign"] }
+          }
+        },
+        {
+          "name": "Screenshots — Confirm Upload",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"storageKey\": \"screenshots/<workerId>/<shiftId>/<uuid>.jpg\",\n  \"sizeBytes\": 512000,\n  \"mimeType\": \"image/jpeg\"\n}" },
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}/screenshots", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}","screenshots"] }
+          }
+        },
+        {
+          "name": "Screenshots — Get Signed Download URL",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}/screenshots/url", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}","screenshots","url"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Certificate /v1",
+      "item": []
+    },
+    {
+      "name": "Grievance /v1",
+      "item": []
+    }
+  ]
+}
