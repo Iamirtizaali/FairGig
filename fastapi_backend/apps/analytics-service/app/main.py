@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import text
 from app.api.routes import kpis, worker, advocate
 from app.repositories.database import init_db, engine
@@ -7,6 +8,14 @@ app = FastAPI(
     title="FairGig Analytics Service",
     description="k-Anonymized macro analytics and worker dashboards.",
     version="1.0.0"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Production Vercel domain or allow all for hackathon
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 @app.on_event("startup")

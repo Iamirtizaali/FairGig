@@ -1,8 +1,9 @@
 # FairGig Anomaly Detection Service — Judge & Integrator Guide
 
-> **Service URL (local):** `http://localhost:8001`  
-> **Swagger UI:** `http://localhost:8001/docs`  
-> **OpenAPI JSON:** `http://localhost:8001/openapi.json`
+> **Service URL (Production):** `https://iamirtizaali-fairgig-anomaly-service.hf.space`  
+> **Swagger UI:** `https://iamirtizaali-fairgig-anomaly-service.hf.space/docs`  
+> **OpenAPI JSON:** `https://iamirtizaali-fairgig-anomaly-service.hf.space/openapi.json`
+> *(Local fallback: `http://localhost:8001`)*
 
 ---
 
@@ -116,12 +117,14 @@ Set the `JUDGE_API_KEY` environment variable in the service to enable this. This
 
 ---
 
-## Example: Judge curl Command
+## Example: Judge curl Command (Production)
+
+> **Note on Cold Starts:** Because this service is hosted on Hugging Face Spaces free tier, it may spin down after inactivity. The first request might take a few seconds to wake the service up (cold start). The frontend triggers a background `/health` check on load to warm it up.
 
 Copy and paste this command into any terminal. It sends 90 days of realistic shift data with a deduction spike on day 89.
 
 ```bash
-curl -X POST "http://localhost:8001/detect" \
+curl -X POST "https://iamirtizaali-fairgig-anomaly-service.hf.space/detect" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: softec_judge_2026" \
   -d '{
@@ -229,7 +232,7 @@ curl -X POST "http://localhost:8001/detect" \
 If you send invalid data, the service returns a `422` with a plain-language explanation:
 
 ```bash
-curl -X POST "http://localhost:8001/detect" \
+curl -X POST "https://iamirtizaali-fairgig-anomaly-service.hf.space/detect" \
   -H "Content-Type: application/json" \
   -H "X-API-Key: softec_judge_2026" \
   -d '{"worker_id":"X","shifts":[{"date":"2026-01-01","platform":"Uber","hours_worked":99,"gross_earned":-100,"platform_deductions":0,"net_received":0}]}'

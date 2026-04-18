@@ -1,6 +1,7 @@
 import os
 import sentry_sdk
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from pydantic import ValidationError
@@ -39,6 +40,14 @@ Statistical anomaly detection for gig-economy workers.
     version="1.0.0",
     contact={"name": "FairGig FastAPI Team", "url": "https://github.com/Iamirtizaali/FairGig"},
     license_info={"name": "MIT"},
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Production Vercel domain or allow all for hackathon
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 # ── Human-readable 422 handler ───────────────────────────────────────────────
