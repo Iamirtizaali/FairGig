@@ -5,7 +5,7 @@ from enum import Enum
 
 class Shift(BaseModel):
     date: date
-    platform: str
+    platform: str = "unknown"
     hours_worked: float
     gross_earned: float
     platform_deductions: float
@@ -47,5 +47,7 @@ class Anomaly(BaseModel):
     explanation: str
 
 class DetectResponse(BaseModel):
+    worker_id: str
+    status: str
     summary: Summary
     anomalies: List[Anomaly]

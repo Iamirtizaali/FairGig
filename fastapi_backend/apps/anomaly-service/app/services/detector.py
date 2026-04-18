@@ -97,6 +97,28 @@ def detect(shifts: List[Shift], z_threshold: float = 2.5, mom_drop_pct: float = 
                 explanation=explain_hourly_rate_drop(row['hourly_rate'], row['base_hourly_mean'], currency)
             ))
 
+    if not anomalies and len(daily_df) >= 2:
+        # Short-history fallback: compare the latest day against prior days only.
+        latest = daily_df.iloc[-1]
+        prior = daily_df.iloc[:-1]
+        prior_mean = float(prior['deduction_pct'].mean())
+        prior_std = float(prior['deduction_pct'].std()) if len(prior) > 1 else 0.0
+        prior_std = max(prior_std, 0.01)
+        z_latest = (float(latest['deduction_pct']) - prior_mean) / prior_std
+
+        if z_latest > z_threshold:
+            anomalies.append(Anomaly(
+                kind=AnomalyKind.deduction_spike,
+                severity=get_severity(z_latest, z_threshold),
+                window=f"Day ending {latest.name.date()}",
+                metric="deduction_pct",
+                observed=float(latest['deduction_pct']),
+                baseline_mean=prior_mean,
+                baseline_std=prior_std,
+                z=float(z_latest),
+                explanation=explain_deduction_spike(float(latest['deduction_pct']), prior_mean)
+            ))
+
     # MOM Income Drop (30-day trailing windows)
     if len(daily_df) >= 30: # Need at least a full month to even compare to something
         last_date = daily_df.index[-1]

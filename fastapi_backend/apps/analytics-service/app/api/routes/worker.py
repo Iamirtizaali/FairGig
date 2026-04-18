@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
-from ..schemas.worker import SummaryResponse, TrendResponse, CommissionTrackerResponse, MedianCompareResponse
-from ..api.deps import verify_jwt
+from app.schemas.worker import SummaryResponse, TrendResponse, CommissionTrackerResponse, MedianCompareResponse
+from app.api.deps import verify_jwt
 
 router = APIRouter()
 

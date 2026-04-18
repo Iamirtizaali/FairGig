@@ -21,7 +21,10 @@ async def detect(payload: DetectRequest, user: dict = Depends(verify_jwt)):
         mom_drop_pct=payload.options.mom_drop_pct,
         currency=payload.currency
     )
+    status = "issues_found" if anomalies else "clean"
     return DetectResponse(
+        worker_id=payload.worker_id,
+        status=status,
         summary=Summary(shifts_analysed=len(payload.shifts), windows=["weekly", "monthly"]),
         anomalies=anomalies
     )
