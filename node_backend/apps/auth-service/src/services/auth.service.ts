@@ -4,7 +4,7 @@ import { userRepository } from '../repositories/user.repository';
 import { refreshTokenRepository } from '../repositories/refreshToken.repository';
 import { roleRequestRepository } from '../repositories/roleRequest.repository';
 import { passwordResetTokenRepository } from '../repositories/passwordResetToken.repository';
-import { auditLog } from '../repositories/audit.repository';
+import { auditLog, listAuditEvents } from '../repositories/audit.repository';
 import {
   generateAccessToken,
   generateRefreshTokenValue,
@@ -262,6 +262,40 @@ export async function rejectRoleRequest(requestId: string, adminId: string, req?
 
   await roleRequestRepository.decide(requestId, 'rejected', adminId);
   await auditLog({ actorId: adminId, actorRole: 'admin', action: 'ROLE_REQUEST_REJECTED', entity: 'RoleRequest', entityId: requestId, req });
+}
+
+// ─── Admin: list users ───────────────────────────────────────────────────────
+
+export async function listUsers(opts: {
+  page: number;
+  limit: number;
+  role?: Role;
+  status?: string;
+  search?: string;
+}) {
+  return userRepository.adminList(opts);
+}
+
+// ─── Admin: audit log ────────────────────────────────────────────────────────
+
+export async function getAuditLog(opts: {
+  page: number;
+  limit: number;
+  actorId?: string;
+  action?: string;
+  entity?: string;
+  from?: string;
+  to?: string;
+}) {
+  return listAuditEvents({
+    page: opts.page,
+    limit: opts.limit,
+    actorId: opts.actorId,
+    action: opts.action,
+    entity: opts.entity,
+    from: opts.from ? new Date(opts.from) : undefined,
+    to: opts.to ? new Date(opts.to) : undefined,
+  });
 }
 
 // ─── Admin: user status ──────────────────────────────────────────────────────

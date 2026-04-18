@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { authRateLimit } from '../middleware/rateLimiter';
+import { authRateLimit, passwordResetRateLimit } from '../middleware/rateLimiter';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
@@ -163,7 +163,7 @@ authRouter.post('/logout', ctrl.logout);
  *       422:
  *         description: Validation error
  */
-authRouter.post('/forgot-password', authRateLimit, validate(forgotPasswordSchema), ctrl.forgotPassword);
+authRouter.post('/forgot-password', passwordResetRateLimit, validate(forgotPasswordSchema), ctrl.forgotPassword);
 
 /**
  * @openapi
@@ -192,7 +192,7 @@ authRouter.post('/forgot-password', authRateLimit, validate(forgotPasswordSchema
  *       422:
  *         description: Validation error
  */
-authRouter.post('/reset-password', authRateLimit, validate(resetPasswordSchema), ctrl.resetPassword);
+authRouter.post('/reset-password', passwordResetRateLimit, validate(resetPasswordSchema), ctrl.resetPassword);
 
 // ─── Authenticated endpoints ──────────────────────────────────────────────────
 
@@ -403,6 +403,78 @@ authRouter.post('/role-requests/:id/approve', authenticate, rbac('admin'), ctrl.
 authRouter.post('/role-requests/:id/reject', authenticate, rbac('admin'), validate(roleRequestDecisionSchema), ctrl.rejectRoleRequest);
 
 // ─── Admin: user management ───────────────────────────────────────────────────
+
+/**
+ * @openapi
+ * /auth/v1/admin/users:
+ *   get:
+ *     tags: [Admin]
+ *     summary: List all users with optional filters (admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 20 }
+ *       - in: query
+ *         name: role
+ *         schema: { type: string, enum: [worker, verifier, advocate, admin] }
+ *       - in: query
+ *         name: status
+ *         schema: { type: string, enum: [active, frozen, deleted] }
+ *       - in: query
+ *         name: search
+ *         schema: { type: string }
+ *         description: Search by name or email (case-insensitive)
+ *     responses:
+ *       200:
+ *         description: Paginated user list
+ *       403:
+ *         description: Admin only
+ */
+authRouter.get('/admin/users', authenticate, rbac('admin'), ctrl.listUsers);
+
+/**
+ * @openapi
+ * /auth/v1/admin/audit:
+ *   get:
+ *     tags: [Admin]
+ *     summary: Browse the audit log (admin only)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema: { type: integer, default: 1 }
+ *       - in: query
+ *         name: limit
+ *         schema: { type: integer, default: 50 }
+ *       - in: query
+ *         name: actorId
+ *         schema: { type: string }
+ *       - in: query
+ *         name: action
+ *         schema: { type: string }
+ *         description: Partial match on action string
+ *       - in: query
+ *         name: entity
+ *         schema: { type: string }
+ *       - in: query
+ *         name: from
+ *         schema: { type: string, format: date-time }
+ *       - in: query
+ *         name: to
+ *         schema: { type: string, format: date-time }
+ *     responses:
+ *       200:
+ *         description: Paginated audit events
+ *       403:
+ *         description: Admin only
+ */
+authRouter.get('/admin/audit', authenticate, rbac('admin'), ctrl.getAuditLog);
 
 /**
  * @openapi

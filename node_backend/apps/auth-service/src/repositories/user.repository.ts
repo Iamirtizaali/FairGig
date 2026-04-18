@@ -77,4 +77,38 @@ export const userRepository = {
     ]);
     return { users, total };
   },
+
+  async adminList(opts: {
+    page: number;
+    limit: number;
+    role?: Role;
+    status?: string;
+    search?: string;
+  }) {
+    const where: Record<string, unknown> = { deletedAt: null };
+    if (opts.role) where['role'] = opts.role;
+    if (opts.status) where['status'] = opts.status;
+    if (opts.search) {
+      where['OR'] = [
+        { email: { contains: opts.search, mode: 'insensitive' } },
+        { name: { contains: opts.search, mode: 'insensitive' } },
+      ];
+    }
+
+    const [users, total] = await Promise.all([
+      prisma.user.findMany({
+        where: where as never,
+        select: {
+          id: true, email: true, name: true, role: true,
+          status: true, language: true, phone: true,
+          cityZoneId: true, categories: true, createdAt: true, updatedAt: true,
+        },
+        skip: (opts.page - 1) * opts.limit,
+        take: opts.limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+      prisma.user.count({ where: where as never }),
+    ]);
+    return { users, total };
+  },
 };

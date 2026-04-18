@@ -16,7 +16,7 @@ export function buildApp(): Application {
   // ── Security & infra middleware ─────────────────────────────────────────────
   app.use(requestId);
   app.use(httpLogger);
-  // Relax helmet's CSP for the public certificate print page (inline styles needed)
+  // Relax CSP only for the public certificate print page (inline styles needed)
   app.use(
     helmet({
       contentSecurityPolicy: {
@@ -27,6 +27,10 @@ export function buildApp(): Application {
           scriptSrc: ["'self'"],
         },
       },
+      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+      frameguard: { action: 'deny' },
+      noSniff: true,
+      referrerPolicy: { policy: 'no-referrer' },
     }),
   );
   app.use(

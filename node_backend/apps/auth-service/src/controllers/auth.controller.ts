@@ -106,6 +106,31 @@ export const rejectRoleRequest = asyncHandler(async (req: Request, res: Response
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
+export const listUsers = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(String(req.query.page ?? '1')) || 1;
+  const limit = Math.min(Number(String(req.query.limit ?? '20')) || 20, 100);
+  const role = req.query.role as string | undefined;
+  const status = req.query.status as string | undefined;
+  const search = req.query.search as string | undefined;
+  const { users, total } = await authService.listUsers({ page, limit, role: role as never, status, search });
+  sendSuccess(res, { users }, 200, { page, limit, total });
+});
+
+export const getAuditLog = asyncHandler(async (req: Request, res: Response) => {
+  const page = Number(String(req.query.page ?? '1')) || 1;
+  const limit = Math.min(Number(String(req.query.limit ?? '50')) || 50, 200);
+  const { events, total } = await authService.getAuditLog({
+    page,
+    limit,
+    actorId: req.query.actorId as string | undefined,
+    action: req.query.action as string | undefined,
+    entity: req.query.entity as string | undefined,
+    from: req.query.from as string | undefined,
+    to: req.query.to as string | undefined,
+  });
+  sendSuccess(res, { events }, 200, { page, limit, total });
+});
+
 export const updateUserStatus = asyncHandler(async (req: Request, res: Response) => {
   const user = await authService.updateUserStatus(String(req.params.id), req.body.status, req.user!.sub, req);
   sendSuccess(res, { user });

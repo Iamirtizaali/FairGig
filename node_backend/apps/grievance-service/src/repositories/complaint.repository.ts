@@ -96,4 +96,28 @@ export const complaintRepository = {
       select: { id: true, title: true, description: true },
     });
   },
+
+  async listReports(opts: { page: number; limit: number; resolved?: boolean }) {
+    const where: Record<string, unknown> = {};
+    if (opts.resolved === true) where['resolvedAt'] = { not: null };
+    if (opts.resolved === false) where['resolvedAt'] = null;
+
+    const [reports, total] = await Promise.all([
+      prisma.report.findMany({
+        where: where as never,
+        include: {
+          complaint: { select: { id: true, title: true, status: true, platform: true, authorId: true } },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip: (opts.page - 1) * opts.limit,
+        take: opts.limit,
+      }),
+      prisma.report.count({ where: where as never }),
+    ]);
+    return { reports, total };
+  },
+
+  async resolveReport(id: string) {
+    return prisma.report.update({ where: { id }, data: { resolvedAt: new Date() } });
+  },
 };

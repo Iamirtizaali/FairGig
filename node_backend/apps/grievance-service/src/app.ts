@@ -9,6 +9,7 @@ import { healthRouter } from './routes/health.routes';
 import { complaintsRouter } from './routes/complaints.routes';
 import { clustersRouter } from './routes/clusters.routes';
 import { boardRouter } from './routes/board.routes';
+import { adminRouter } from './routes/admin.routes';
 import { setupSwagger } from './swagger';
 import { env } from './config/env';
 
@@ -18,7 +19,14 @@ export function buildApp(): Application {
   // ── Security & infra middleware ─────────────────────────────────────────────
   app.use(requestId);
   app.use(httpLogger);
-  app.use(helmet());
+  app.use(
+    helmet({
+      hsts: { maxAge: 31536000, includeSubDomains: true, preload: true },
+      frameguard: { action: 'deny' },
+      noSniff: true,
+      referrerPolicy: { policy: 'no-referrer' },
+    }),
+  );
   app.use(
     cors({
       origin: env.FRONTEND_ORIGINS.split(',').map((o) => o.trim()),
@@ -37,6 +45,7 @@ export function buildApp(): Application {
   app.use('/grievance/v1/board', boardRouter);
   app.use('/grievance/v1/complaints', complaintsRouter);
   app.use('/grievance/v1/clusters', clustersRouter);
+  app.use('/grievance/v1/admin', adminRouter);
 
   // ── Error handler (must be last) ───────────────────────────────────────────
   app.use(errorHandler);

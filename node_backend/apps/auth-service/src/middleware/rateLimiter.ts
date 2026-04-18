@@ -24,6 +24,7 @@ export const defaultRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: errorBody('RATE_LIMIT_EXCEEDED', 'Too many requests, please try again in a minute.'),
+  ...redisStoreOptions(),
 });
 
 export const authRateLimit = rateLimit({
@@ -41,4 +42,14 @@ export const uploadRateLimit = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   message: errorBody('RATE_LIMIT_EXCEEDED', 'Upload rate limit exceeded.'),
+  ...redisStoreOptions(),
+});
+
+export const passwordResetRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: errorBody('RATE_LIMIT_EXCEEDED', 'Too many password reset attempts. Try again in a minute.'),
+  ...redisStoreOptions(),
 });
