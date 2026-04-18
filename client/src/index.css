@@ -1,0 +1,745 @@
+/* ============================================================
+   FAIRGIG — Design System CSS
+   Based on Design.md v1.0 — April 2026
+   Stack: Tailwind CSS v4 + Shadcn/ui + tw-animate-css
+   ============================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&family=Noto+Nastaliq+Urdu:wght@400;700&display=swap');
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+/* Google Fonts — Syne (display) + DM Sans (body) + JetBrains Mono (data) */
+
+/* ============================================================
+   CUSTOM VARIANT
+   ============================================================ */
+@custom-variant dark (&:is(.dark *));
+
+/* ============================================================
+   ROOT — FairGig Design Tokens (always dark-mode by default)
+   ============================================================ */
+:root {
+  color-scheme: dark;
+
+  /* ── Backgrounds ─────────────────────────────────────────── */
+  --fg-bg-deep:    #0A0E1A;
+  --fg-bg-surface: #111827;
+  --fg-bg-card:    #1A2236;
+  --fg-bg-glass:   rgba(255, 255, 255, 0.04);
+  --fg-border:     #1E293B;
+
+  /* ── Brand Accents ───────────────────────────────────────── */
+  --fg-cyan:         #00D4FF;
+  --fg-cyan-dim:     rgba(0, 212, 255, 0.15);
+  --fg-cyan-ring:    rgba(0, 212, 255, 0.30);
+  --fg-emerald:      #6EE7B7;
+  --fg-emerald-dim:  rgba(110, 231, 183, 0.15);
+  --fg-amber:        #F59E0B;
+  --fg-amber-dim:    rgba(245, 158, 11, 0.15);
+  --fg-red:          #F87171;
+  --fg-red-dim:      rgba(248, 113, 113, 0.15);
+  --fg-purple:       #A78BFA;
+  --fg-purple-dim:   rgba(167, 139, 250, 0.15);
+
+  /* ── Text ────────────────────────────────────────────────── */
+  --fg-text-primary:   #F1F5F9;
+  --fg-text-secondary: #94A3B8;
+  --fg-text-muted:     #475569;
+
+  /* ── Shadows & Glows ─────────────────────────────────────── */
+  --fg-shadow-card:  0 4px 24px rgba(0, 0, 0, 0.4);
+  --fg-glow-cyan:    0 0 20px rgba(0, 212, 255, 0.2);
+  --fg-glow-emerald: 0 0 20px rgba(110, 231, 183, 0.2);
+
+  /* ── Spacing Scale (8px base) ────────────────────────────── */
+  --fg-space-xs:  4px;
+  --fg-space-sm:  8px;
+  --fg-space-md:  16px;
+  --fg-space-lg:  24px;
+  --fg-space-xl:  32px;
+  --fg-space-2xl: 48px;
+  --fg-space-3xl: 64px;
+
+  /* ── Border Radius ───────────────────────────────────────── */
+  --fg-radius-sm:   6px;
+  --fg-radius-md:   12px;
+  --fg-radius-lg:   16px;
+  --fg-radius-xl:   24px;
+  --fg-radius-full: 9999px;
+
+  /* ── Typography ──────────────────────────────────────────── */
+  --fg-font-display: 'Syne', sans-serif;
+  --fg-font-body:    'DM Sans', sans-serif;
+  --fg-font-mono:    'JetBrains Mono', monospace;
+  --fg-font-urdu:    'Noto Nastaliq Urdu', serif;
+
+  /* ── Shadcn/Radix Semantic Tokens (dark defaults) ─────────
+     These map to what components expect from shadcn/tailwind.css
+     ─────────────────────────────────────────────────────────── */
+  --background:   #0A0E1A;
+  --foreground:   #F1F5F9;
+
+  --card:           #1A2236;
+  --card-foreground: #F1F5F9;
+
+  --popover:           #111827;
+  --popover-foreground: #F1F5F9;
+
+  /* Primary → FairGig Cyan */
+  --primary:            #00D4FF;
+  --primary-foreground: #0A0E1A;
+
+  /* Secondary → Surface */
+  --secondary:            #1E293B;
+  --secondary-foreground: #F1F5F9;
+
+  /* Muted → Card surface */
+  --muted:            #1A2236;
+  --muted-foreground: #94A3B8;
+
+  /* Accent → Cyan dim */
+  --accent:            rgba(0, 212, 255, 0.15);
+  --accent-foreground: #00D4FF;
+
+  /* Destructive → FairGig Red */
+  --destructive:            #F87171;
+  --destructive-foreground: #0A0E1A;
+
+  --border: #1E293B;
+  --input:  #0F172A;
+  --ring:   #00D4FF;
+
+  /* ── Radius (Shadcn uses --radius as base) ───────────────── */
+  --radius: 0.75rem; /* 12px — matches --fg-radius-md */
+
+  /* ── Charts ──────────────────────────────────────────────── */
+  --chart-1: #00D4FF;  /* cyan */
+  --chart-2: #6EE7B7;  /* emerald */
+  --chart-3: #F59E0B;  /* amber */
+  --chart-4: #A78BFA;  /* purple */
+  --chart-5: #F87171;  /* red */
+
+  /* ── Sidebar tokens ──────────────────────────────────────── */
+  --sidebar:                    #111827;
+  --sidebar-foreground:         #F1F5F9;
+  --sidebar-primary:            #00D4FF;
+  --sidebar-primary-foreground: #0A0E1A;
+  --sidebar-accent:             rgba(0, 212, 255, 0.15);
+  --sidebar-accent-foreground:  #00D4FF;
+  --sidebar-border:             #1E293B;
+  --sidebar-ring:               #00D4FF;
+}
+
+/* ============================================================
+   TAILWIND v4 THEME INLINE REGISTRATION
+   Exposes all tokens as Tailwind utility classes, e.g.
+   text-fg-cyan, bg-fg-surface, font-display, font-mono, etc.
+   ============================================================ */
+@theme inline {
+  /* Fonts */
+  --font-display: var(--fg-font-display);
+  --font-body:    var(--fg-font-body);
+  --font-sans:    var(--fg-font-body);
+  --font-mono:    var(--fg-font-mono);
+  --font-urdu:    var(--fg-font-urdu);
+
+  /* FairGig brand colors */
+  --color-fg-bg-deep:    var(--fg-bg-deep);
+  --color-fg-surface:    var(--fg-bg-surface);
+  --color-fg-card:       var(--fg-bg-card);
+  --color-fg-glass:      var(--fg-bg-glass);
+  --color-fg-border:     var(--fg-border);
+
+  --color-fg-cyan:        var(--fg-cyan);
+  --color-fg-cyan-dim:    var(--fg-cyan-dim);
+  --color-fg-emerald:     var(--fg-emerald);
+  --color-fg-emerald-dim: var(--fg-emerald-dim);
+  --color-fg-amber:       var(--fg-amber);
+  --color-fg-amber-dim:   var(--fg-amber-dim);
+  --color-fg-red:         var(--fg-red);
+  --color-fg-red-dim:     var(--fg-red-dim);
+  --color-fg-purple:      var(--fg-purple);
+  --color-fg-purple-dim:  var(--fg-purple-dim);
+
+  --color-fg-text-primary:   var(--fg-text-primary);
+  --color-fg-text-secondary: var(--fg-text-secondary);
+  --color-fg-text-muted:     var(--fg-text-muted);
+
+  /* Shadcn semantic tokens */
+  --color-background:   var(--background);
+  --color-foreground:   var(--foreground);
+  --color-card:                var(--card);
+  --color-card-foreground:     var(--card-foreground);
+  --color-popover:             var(--popover);
+  --color-popover-foreground:  var(--popover-foreground);
+  --color-primary:             var(--primary);
+  --color-primary-foreground:  var(--primary-foreground);
+  --color-secondary:           var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted:               var(--muted);
+  --color-muted-foreground:    var(--muted-foreground);
+  --color-accent:              var(--accent);
+  --color-accent-foreground:   var(--accent-foreground);
+  --color-destructive:         var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input:  var(--input);
+  --color-ring:   var(--ring);
+
+  /* Radius scale */
+  --radius-sm:   var(--fg-radius-sm);
+  --radius-md:   var(--fg-radius-md);
+  --radius-lg:   var(--fg-radius-lg);
+  --radius-xl:   var(--fg-radius-xl);
+  --radius-2xl:  calc(var(--fg-radius-xl) * 1.2);
+  --radius-full: var(--fg-radius-full);
+
+  /* Charts */
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+
+  /* Sidebar */
+  --color-sidebar:                    var(--sidebar);
+  --color-sidebar-foreground:         var(--sidebar-foreground);
+  --color-sidebar-primary:            var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent:             var(--sidebar-accent);
+  --color-sidebar-accent-foreground:  var(--sidebar-accent-foreground);
+  --color-sidebar-border:             var(--sidebar-border);
+  --color-sidebar-ring:               var(--sidebar-ring);
+}
+
+/* ============================================================
+   BASE LAYER — global resets & element defaults
+   ============================================================ */
+@layer base {
+  *, *::before, *::after {
+    box-sizing: border-box;
+    border-color: var(--border);
+    outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+  }
+
+  html {
+    font-family: var(--fg-font-body);
+    font-size: 16px;
+    line-height: 1.5;
+    letter-spacing: 0.01em;
+    color-scheme: dark;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-synthesis: none;
+    scroll-behavior: smooth;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--fg-bg-deep);
+    color: var(--fg-text-primary);
+    font-family: var(--fg-font-body);
+    min-height: 100svh;
+  }
+
+  /* ── Headings — Syne display font ──────────────────────────── */
+  h1, h2, h3, h4, h5, h6 {
+    font-family: var(--fg-font-display);
+    color: var(--fg-text-primary);
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+    margin: 0;
+  }
+
+  h1 { font-size: clamp(2.5rem, 5vw, 4.5rem); font-weight: 800; }
+  h2 { font-size: clamp(1.75rem, 3vw, 2.5rem); font-weight: 700; }
+  h3 { font-size: clamp(1.25rem, 2vw, 1.75rem); font-weight: 700; }
+  h4 { font-size: 1.25rem; font-weight: 700; }
+  h5 { font-size: 1rem;    font-weight: 700; }
+  h6 { font-size: 0.875rem; font-weight: 700; }
+
+  p { margin: 0; color: var(--fg-text-secondary); line-height: 1.65; }
+
+  a {
+    color: var(--fg-cyan);
+    text-decoration: none;
+    transition: color 150ms ease, opacity 150ms ease;
+  }
+  a:hover { opacity: 0.85; }
+
+  /* ── Monospace — JetBrains Mono for PKR amounts & IDs ──────── */
+  code, kbd, pre, .font-mono, [data-monospace] {
+    font-family: var(--fg-font-mono);
+    font-feature-settings: "liga" 0;
+  }
+
+  code {
+    font-size: 0.875em;
+    padding: 2px 6px;
+    background: var(--fg-bg-card);
+    border: 1px solid var(--fg-border);
+    border-radius: var(--fg-radius-sm);
+    color: var(--fg-cyan);
+  }
+
+  /* ── Focus visible ─────────────────────────────────────────── */
+  :focus-visible {
+    outline: 2px solid var(--fg-cyan);
+    outline-offset: 2px;
+    border-radius: var(--fg-radius-sm);
+  }
+
+  /* ── Selection ─────────────────────────────────────────────── */
+  ::selection {
+    background: var(--fg-cyan-dim);
+    color: var(--fg-text-primary);
+  }
+
+  /* ── Scrollbar (WebKit) ────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--fg-bg-surface); }
+  ::-webkit-scrollbar-thumb {
+    background: var(--fg-border);
+    border-radius: var(--fg-radius-full);
+    transition: background 200ms ease;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: var(--fg-text-muted); }
+
+  /* ── RTL support for Urdu ──────────────────────────────────── */
+  [lang="ur"], [dir="rtl"] {
+    font-family: var(--fg-font-urdu);
+    direction: rtl;
+    text-align: right;
+  }
+}
+
+/* ============================================================
+   COMPONENT LAYER — reusable FairGig UI classes
+   ============================================================ */
+@layer components {
+
+  /* ── Root layout ────────────────────────────────────────── */
+  #root {
+    min-height: 100svh;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ── Glass panel ──────────────────────────────────────────
+     Usage: <div class="fg-glass">
+  ─────────────────────────────────────────────────────────── */
+  .fg-glass {
+    background: var(--fg-bg-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid var(--fg-border);
+  }
+
+  /* ── Card ─────────────────────────────────────────────────
+     Usage: <div class="fg-card">
+  ─────────────────────────────────────────────────────────── */
+  .fg-card {
+    background: var(--fg-bg-card);
+    border: 1px solid var(--fg-border);
+    border-radius: var(--fg-radius-lg);
+    box-shadow: var(--fg-shadow-card);
+    transition: transform 200ms ease, box-shadow 200ms ease;
+  }
+  .fg-card:hover {
+    transform: translateY(-4px) scale(1.005);
+    box-shadow: var(--fg-glow-cyan);
+  }
+
+  /* ── Skeleton loader ──────────────────────────────────────
+     Usage: <div class="fg-skeleton">
+  ─────────────────────────────────────────────────────────── */
+  .fg-skeleton {
+    background: linear-gradient(
+      90deg,
+      var(--fg-bg-card) 25%,
+      var(--fg-border)  50%,
+      var(--fg-bg-card) 75%
+    );
+    background-size: 200% 100%;
+    animation: fg-skeleton-pulse 1.5s ease-in-out infinite;
+    border-radius: var(--fg-radius-md);
+  }
+
+  /* ── PKR amount —JetBrains Mono, right-aligned, ₨ prefix ──
+     Usage: <span class="fg-amount">₨12,450</span>
+  ─────────────────────────────────────────────────────────── */
+  .fg-amount {
+    font-family: var(--fg-font-mono);
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+    display: inline-block;
+  }
+
+  /* ── Status badges ────────────────────────────────────────
+     Usage: <span class="fg-badge fg-badge--verified">VERIFIED</span>
+  ─────────────────────────────────────────────────────────── */
+  .fg-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 10px;
+    border-radius: var(--fg-radius-full);
+    font-size: 0.75rem;
+    font-weight: 600;
+    font-family: var(--fg-font-body);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    white-space: nowrap;
+  }
+  .fg-badge--verified {
+    background: var(--fg-emerald-dim);
+    color: var(--fg-emerald);
+    border-color: rgba(110, 231, 183, 0.3);
+  }
+  .fg-badge--self-attested {
+    background: var(--fg-amber-dim);
+    color: var(--fg-amber);
+    border-color: rgba(245, 158, 11, 0.3);
+  }
+  .fg-badge--flagged {
+    background: var(--fg-red-dim);
+    color: var(--fg-red);
+    border-color: rgba(248, 113, 113, 0.3);
+  }
+  .fg-badge--unverifiable {
+    background: rgba(100, 116, 139, 0.15);
+    color: var(--fg-text-muted);
+    border-color: rgba(100, 116, 139, 0.3);
+  }
+  .fg-badge--pending {
+    background: var(--fg-cyan-dim);
+    color: var(--fg-cyan);
+    border-color: rgba(0, 212, 255, 0.3);
+  }
+  .fg-badge--escalated {
+    background: var(--fg-purple-dim);
+    color: var(--fg-purple);
+    border-color: rgba(167, 139, 250, 0.3);
+  }
+
+  /* ── Buttons ──────────────────────────────────────────────
+     Usage: <button class="fg-btn fg-btn--primary">
+  ─────────────────────────────────────────────────────────── */
+  .fg-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 20px;
+    border-radius: var(--fg-radius-md);
+    font-family: var(--fg-font-body);
+    font-size: 0.9375rem;
+    font-weight: 600;
+    line-height: 1;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: transform 150ms ease, opacity 150ms ease, box-shadow 150ms ease, background 150ms ease;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .fg-btn:hover  { transform: scale(1.02); }
+  .fg-btn:active { transform: scale(0.98); }
+  .fg-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  .fg-btn--primary {
+    background: var(--fg-cyan);
+    color: var(--fg-bg-deep);
+  }
+  .fg-btn--primary:hover {
+    box-shadow: var(--fg-glow-cyan);
+    filter: brightness(1.1);
+  }
+
+  .fg-btn--secondary {
+    background: transparent;
+    border-color: var(--fg-cyan);
+    color: var(--fg-cyan);
+  }
+  .fg-btn--secondary:hover { background: var(--fg-cyan-dim); }
+
+  .fg-btn--ghost {
+    background: transparent;
+    color: var(--fg-text-secondary);
+    border-color: transparent;
+  }
+  .fg-btn--ghost:hover { color: var(--fg-text-primary); background: var(--fg-bg-glass); }
+
+  .fg-btn--danger {
+    background: transparent;
+    border-color: var(--fg-red);
+    color: var(--fg-red);
+  }
+  .fg-btn--danger:hover { background: var(--fg-red-dim); }
+
+  /* ── Sidebar nav item ─────────────────────────────────────
+     Usage: <a class="fg-nav-item [fg-nav-item--active]">
+  ─────────────────────────────────────────────────────────── */
+  .fg-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 16px;
+    border-radius: var(--fg-radius-md);
+    border-left: 3px solid transparent;
+    color: var(--fg-text-secondary);
+    font-size: 0.9375rem;
+    font-weight: 500;
+    transition: all 200ms ease;
+    cursor: pointer;
+    text-decoration: none;
+  }
+  .fg-nav-item:hover {
+    color: var(--fg-text-primary);
+    background: var(--fg-bg-glass);
+  }
+  .fg-nav-item--active {
+    border-left-color: var(--fg-cyan);
+    background: var(--fg-cyan-dim);
+    color: var(--fg-cyan);
+    font-weight: 600;
+  }
+
+  /* ── Input ────────────────────────────────────────────────
+     Usage: <input class="fg-input">
+  ─────────────────────────────────────────────────────────── */
+  .fg-input {
+    width: 100%;
+    background: #0F172A;
+    border: 1px solid var(--fg-border);
+    border-radius: var(--fg-radius-md);
+    padding: 12px 16px;
+    color: var(--fg-text-primary);
+    font-family: var(--fg-font-body);
+    font-size: 0.9375rem;
+    transition: border-color 150ms ease, box-shadow 150ms ease;
+    outline: none;
+  }
+  .fg-input::placeholder { color: var(--fg-text-muted); }
+  .fg-input:focus {
+    border-color: var(--fg-cyan);
+    box-shadow: 0 0 0 3px var(--fg-cyan-ring);
+  }
+  .fg-input--error {
+    border-color: var(--fg-red);
+    box-shadow: 0 0 0 3px var(--fg-red-dim);
+    animation: fg-shake 200ms ease;
+  }
+
+  /* ── Anomaly / alert card ─────────────────────────────────
+     Usage: <div class="fg-alert fg-alert--amber">
+  ─────────────────────────────────────────────────────────── */
+  .fg-alert {
+    padding: 14px 16px;
+    border-radius: var(--fg-radius-md);
+    border-left: 3px solid transparent;
+    font-size: 0.875rem;
+    line-height: 1.5;
+  }
+  .fg-alert--amber {
+    background: var(--fg-amber-dim);
+    border-left-color: var(--fg-amber);
+    color: var(--fg-amber);
+  }
+  .fg-alert--red {
+    background: var(--fg-red-dim);
+    border-left-color: var(--fg-red);
+    color: var(--fg-red);
+  }
+  .fg-alert--emerald {
+    background: var(--fg-emerald-dim);
+    border-left-color: var(--fg-emerald);
+    color: var(--fg-emerald);
+  }
+  .fg-alert--cyan {
+    background: var(--fg-cyan-dim);
+    border-left-color: var(--fg-cyan);
+    color: var(--fg-cyan);
+  }
+  .fg-alert--purple {
+    background: var(--fg-purple-dim);
+    border-left-color: var(--fg-purple);
+    color: var(--fg-purple);
+  }
+}
+
+/* ============================================================
+   UTILITY LAYER — one-off FairGig helpers
+   ============================================================ */
+@layer utilities {
+
+  /* ── Glassmorphism helper ─────────────────────────────────── */
+  .glass {
+    background: var(--fg-bg-glass);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  /* ── Sidebar glow pin ─────────────────────────────────────── */
+  .sidebar-active-pin {
+    box-shadow: inset 3px 0 0 var(--fg-cyan);
+    background: var(--fg-cyan-dim);
+    color: var(--fg-cyan);
+  }
+
+  /* ── Platform chip colors ─────────────────────────────────── */
+  .platform-careem   { background: rgba(0, 180, 100, 0.15); color: #00B464; border-color: rgba(0, 180, 100, 0.3); }
+  .platform-uber     { background: rgba(255, 255, 255, 0.08); color: #E5E7EB; border-color: rgba(255, 255, 255, 0.2); }
+  .platform-bykea    { background: rgba(249, 115, 22, 0.15); color: #F97316; border-color: rgba(249, 115, 22, 0.3); }
+  .platform-foodpanda{ background: rgba(236, 72, 153, 0.15); color: #EC4899; border-color: rgba(236, 72, 153, 0.3); }
+  .platform-indrive  { background: rgba(59, 130, 246, 0.15); color: #60A5FA; border-color: rgba(59, 130, 246, 0.3); }
+
+  /* ── Role badge colors ────────────────────────────────────── */
+  .role-worker   { background: var(--fg-cyan-dim);   color: var(--fg-cyan);   border-color: rgba(0, 212, 255, 0.3); }
+  .role-verifier { background: var(--fg-purple-dim); color: var(--fg-purple); border-color: rgba(167, 139, 250, 0.3); }
+  .role-advocate { background: var(--fg-purple-dim); color: var(--fg-purple); border-color: rgba(167, 139, 250, 0.3); }
+  .role-admin    { background: rgba(245, 158, 11, 0.15); color: #FBBF24;      border-color: rgba(245, 158, 11, 0.3); }
+
+  /* ── Glow text effect ─────────────────────────────────────── */
+  .text-glow-cyan    { text-shadow: 0 0 20px rgba(0, 212, 255, 0.5); }
+  .text-glow-emerald { text-shadow: 0 0 20px rgba(110, 231, 183, 0.5); }
+
+  /* ── Mesh / grid background (hero section) ────────────────── */
+  .bg-mesh {
+    background-color: var(--fg-bg-deep);
+    background-image:
+      linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+    background-size: 48px 48px;
+  }
+
+  /* ── Gradient border card ─────────────────────────────────── */
+  .border-gradient-cyan {
+    border: 1px solid transparent;
+    background-clip: padding-box;
+    position: relative;
+  }
+  .border-gradient-cyan::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    border: 1px solid;
+    border-image: linear-gradient(135deg, var(--fg-cyan), var(--fg-emerald)) 1;
+    mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+}
+
+/* ============================================================
+   KEYFRAME ANIMATIONS
+   ============================================================ */
+
+/* Skeleton shimmer */
+@keyframes fg-skeleton-pulse {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Input shake on error */
+@keyframes fg-shake {
+  0%, 100% { transform: translateX(0); }
+  20%       { transform: translateX(-6px); }
+  40%       { transform: translateX(6px); }
+  60%       { transform: translateX(-4px); }
+  80%       { transform: translateX(4px); }
+}
+
+/* Certificate hero float */
+@keyframes fg-float {
+  0%, 100% { transform: translateY(0px) rotate(-2deg); }
+  50%       { transform: translateY(-12px) rotate(-2deg); }
+}
+
+/* Gentle pulse for live indicators */
+@keyframes fg-pulse-dot {
+  0%, 100% { opacity: 1;   transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(1.3); }
+}
+
+/* Badge pop on status change */
+@keyframes fg-badge-pop {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.18); }
+  100% { transform: scale(1); }
+}
+
+/* FAB fan expansion (mobile) */
+@keyframes fg-fan-in {
+  0%   { opacity: 0; transform: scale(0.5) translateY(20px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* Count-up highlight flash */
+@keyframes fg-count-flash {
+  0%   { color: var(--fg-text-primary); }
+  50%  { color: var(--fg-cyan); }
+  100% { color: var(--fg-text-primary); }
+}
+
+/* SVG stroke draw (checkmarks, shields) */
+@keyframes fg-stroke-draw {
+  from { stroke-dashoffset: 1000; }
+  to   { stroke-dashoffset: 0; }
+}
+
+/* FairGig logo shield spin (pull-to-refresh) */
+@keyframes fg-shield-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* Confetti particle drop */
+@keyframes fg-confetti {
+  0%   { transform: translateY(-20px) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(400px) rotate(720deg); opacity: 0; }
+}
+
+/* ============================================================
+   ANIMATION UTILITY CLASSES
+   ============================================================ */
+.animate-float           { animation: fg-float 4s ease-in-out infinite; }
+.animate-pulse-dot       { animation: fg-pulse-dot 1.5s ease-in-out infinite; }
+.animate-badge-pop       { animation: fg-badge-pop 250ms ease; }
+.animate-shield-spin     { animation: fg-shield-spin 1s linear infinite; }
+.animate-stroke-draw     { animation: fg-stroke-draw 1.5s ease forwards; }
+.animate-shake           { animation: fg-shake 200ms ease; }
+.animate-skeleton        { animation: fg-skeleton-pulse 1.5s ease-in-out infinite; }
+.animate-count-flash     { animation: fg-count-flash 0.6s ease; }
+
+/* ============================================================
+   PRINT STYLES — Certificate print mode
+   Hides all UI chrome, shows only certificate content
+   ============================================================ */
+@media print {
+  .no-print, nav, header, footer, aside,
+  [data-print-hide] {
+    display: none !important;
+  }
+
+  body {
+    background: #fff;
+    color: #000;
+  }
+
+  .certificate-document {
+    max-width: 100%;
+    box-shadow: none;
+    border: none;
+    padding: 0;
+  }
+}
