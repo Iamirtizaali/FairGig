@@ -2,10 +2,145 @@ openapi: 3.0.3
 info:
   title: FairGig Analytics Service API
   version: 1.0.0
+  description: Worker analytics, advocate analytics, and internal refresh endpoints for FairGig.
+servers:
+  - url: http://localhost:8002
 paths:
-  /benchmark/city-median:
+  /worker/summary:
     get:
-      summary: Get median benchmark
+      summary: Worker dashboard summary
+      description: Returns weekly and monthly earnings plus hourly-rate and verification metrics for the signed-in worker.
       responses:
         "200":
-          description: OK
+          description: Summary payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /worker/trend:
+    get:
+      summary: Worker earnings trend
+      description: Returns a time series for the last 12 periods. Supports `granularity=week|month`.
+      parameters:
+        - name: granularity
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [week, month]
+      responses:
+        "200":
+          description: Trend payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /worker/trends:
+    get:
+      summary: Worker earnings trend legacy alias
+      description: Legacy alias kept for compatibility with older clients.
+      responses:
+        "200":
+          description: Trend payload
+  /worker/commission-tracker:
+    get:
+      summary: Worker commission tracker
+      description: Returns the requested platform's average commission and a per-platform weekly series.
+      parameters:
+        - name: platform
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Commission tracker payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /worker/median-compare:
+    get:
+      summary: Worker vs city median comparison
+      description: Returns the worker's median hourly rate versus the city median, protected by k-anonymity.
+      parameters:
+        - name: zone
+          in: query
+          required: true
+          schema:
+            type: string
+        - name: category
+          in: query
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Median comparison payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /advocate/commission-trends:
+    get:
+      summary: Advocate commission trends
+      description: Returns one weekly time series per platform with k-anonymity applied per cell.
+      responses:
+        "200":
+          description: Advocate commission trends payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /advocate/income-distribution:
+    get:
+      summary: Advocate income distribution
+      description: Returns p10/p25/p50/p75/p90 income percentiles for the selected zone or city-wide.
+      parameters:
+        - name: zone
+          in: query
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Advocate income distribution payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /advocate/top-complaints:
+    get:
+      summary: Advocate top complaints
+      description: Returns the top complaint categories for the requested window.
+      parameters:
+        - name: window
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [7d, 30d, 90d]
+      responses:
+        "200":
+          description: Top complaints payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /advocate/vulnerability:
+    get:
+      summary: Advocate vulnerability list
+      description: Returns anonymised workers whose income dropped more than 20% month-over-month.
+      responses:
+        "200":
+          description: Vulnerability payload
+        "401":
+          description: Missing or invalid JWT/API key
+  /advocate/internal/refresh-vulnerability:
+    post:
+      summary: Refresh vulnerability materialized view
+      description: Admin/judge-only helper that recomputes the vulnerability flags immediately.
+      responses:
+        "200":
+          description: Refresh summary
+        "401":
+          description: Missing or invalid JWT/API key
+        "403":
+          description: Insufficient privileges
+  /internal/refresh-vulnerability:
+    post:
+      summary: Refresh vulnerability materialized view alias
+      description: Root-level alias for admin/demo refresh of the vulnerability flags.
+      responses:
+        "200":
+          description: Refresh summary
+        "401":
+          description: Missing or invalid JWT/API key
+        "403":
+          description: Insufficient privileges

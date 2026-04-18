@@ -21,7 +21,7 @@ from app.schemas.advocate import (
     TopComplaintsResponse, ComplaintCategory,
     VulnerabilityResponse, VulnerableWorker,
 )
-from app.api.deps import verify_jwt
+from app.api.deps import verify_jwt, require_roles
 from app.repositories.database import get_db, Shift, Complaint, VulnerabilityFlag
 from app.core.cache import with_cache
 from app.core.jobs import run_vulnerability_job
@@ -203,6 +203,7 @@ async def get_top_complaints(
     dependencies=[Depends(verify_jwt)],
 )
 @observe("advocate.vulnerability")
+@with_cache(ttl=VULN_TTL)
 async def get_vulnerability(db: AsyncSession = Depends(get_db)):
     """
     Reads from the vulnerability_flags materialised view (populated by the nightly job).
@@ -252,9 +253,8 @@ async def get_vulnerability(db: AsyncSession = Depends(get_db)):
 @router.post(
     "/internal/refresh-vulnerability",
     summary="Force-refresh the vulnerability materialised view (admin/demo use)",
-    dependencies=[Depends(verify_jwt)],
 )
-async def refresh_vulnerability():
+async def refresh_vulnerability(user: dict = Depends(require_roles("admin", "judge"))):
     """
     Calls the same computation the nightly Render scheduled job runs.
     Use this during demos or manual testing without waiting for the cron.
@@ -268,7 +268,7 @@ async def refresh_vulnerability():
 @router.post(
     "/admin/run-vulnerability-job",
     summary="Alias: trigger nightly vulnerability job (admin/judge only)",
-    dependencies=[Depends(verify_jwt)],
+    dependencies=[Depends(require_roles("admin", "judge"))],
     include_in_schema=False,  # hide from Swagger to avoid confusion
 )
 async def trigger_vulnerability_job_compat():

@@ -22,6 +22,8 @@ import time
 import functools
 import structlog
 
+from app.core.cache import get_cache_status
+
 logger = structlog.get_logger("fairgig.analytics")
 
 def observe(endpoint_name: str):
@@ -63,6 +65,7 @@ def observe(endpoint_name: str):
                 # Infer user role from kwargs if available
                 user = kwargs.get("user") or {}
                 user_role = user.get("role", "unknown") if isinstance(user, dict) else "unknown"
+                cache_status = get_cache_status()
 
                 logger.info(
                     "endpoint.call",
@@ -71,6 +74,7 @@ def observe(endpoint_name: str):
                     status=status,
                     result_size=result_size,
                     user_role=user_role,
+                    cache_status=cache_status,
                 )
 
         return wrapper
