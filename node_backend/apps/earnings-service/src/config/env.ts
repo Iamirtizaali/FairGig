@@ -14,6 +14,8 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });
 
+
+
 const parsed = envSchema.safeParse(process.env);
 
 if (!parsed.success) {
@@ -21,5 +23,6 @@ if (!parsed.success) {
   process.exit(1);
 }
 
+console.log(parsed.data);
 export const env = parsed.data;
 export type Env = typeof env;

@@ -9,7 +9,8 @@ export function getRedis(): Redis {
     _redis = new Redis(env.REDIS_URL, {
       maxRetriesPerRequest: null, // required by BullMQ
       enableReadyCheck: false,
-      lazyConnect: true,
+      lazyConnect: false,
+      connectTimeout: 10000,
     });
     _redis.on('error', (err) => logger.warn({ err }, 'redis error'));
   }

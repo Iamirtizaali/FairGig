@@ -9,9 +9,10 @@ export function getRedis(): Redis | null {
   if (_redis) return _redis;
 
   _redis = new Redis(env.REDIS_URL, {
-    enableOfflineQueue: false,
-    lazyConnect: true,
+    enableOfflineQueue: true,
+    lazyConnect: false,
     maxRetriesPerRequest: 1,
+    connectTimeout: 10000,
   });
 
   _redis.on('error', (err) =>
