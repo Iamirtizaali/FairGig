@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: FairGig Grievance Service API
+  version: 1.0.0
+paths:
+  /grievances/mine:
+    get:
+      summary: Get own grievances
+      responses:
+        "200":
+          description: OK

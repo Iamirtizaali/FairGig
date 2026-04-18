@@ -1,20 +1,8 @@
 import pandas as pd
 import numpy as np
 from scipy import stats
-from pydantic import BaseModel
 from typing import List
-import datetime
-
-class ShiftEntry(BaseModel):
-    date: datetime.date
-    hours_worked: float
-    gross_earned: float
-    platform_deductions: float
-    net_received: float
-
-class DetectRequest(BaseModel):
-    worker_id: str
-    shifts: List[ShiftEntry]
+from app.schemas.detect import DetectRequest
 
 def detect_anomalies(payload: DetectRequest) -> List[str]:
     flags = []
