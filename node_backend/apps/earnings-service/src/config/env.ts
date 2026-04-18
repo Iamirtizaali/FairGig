@@ -12,6 +12,11 @@ const envSchema = z.object({
   SUPABASE_BUCKET: z.string().default('fairgig-screenshots'),
   ANOMALY_SERVICE_URL: z.string().url().default('http://localhost:8000'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
+  SMTP_HOST: z.string().optional(),
+  SMTP_PORT: z.coerce.number().int().positive().default(587),
+  SMTP_USER: z.string().optional(),
+  SMTP_PASS: z.string().optional(),
+  EMAIL_FROM: z.string().default('FairGig <noreply@fairgig.app>'),
 });
 
 

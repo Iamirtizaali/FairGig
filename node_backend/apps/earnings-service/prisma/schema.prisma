@@ -138,15 +138,16 @@ model Screenshot {
 // ─── Verifications ────────────────────────────────────────────────────────────
 
 model Verification {
-  id         String             @id @default(cuid())
-  shiftId    String
-  verifierId String
-  status     VerificationStatus @default(pending)
-  notes      String?
-  decidedAt  DateTime?
-  createdAt  DateTime           @default(now())
+  id           String             @id @default(cuid())
+  shiftId      String
+  verifierId   String
+  screenshotId String?
+  status       VerificationStatus @default(pending)
+  notes        String?
+  decidedAt    DateTime?
+  createdAt    DateTime           @default(now())
 
-  shift      Shift              @relation(fields: [shiftId], references: [id])
+  shift        Shift              @relation(fields: [shiftId], references: [id])
 
   @@index([shiftId])
   @@map("verifications")
@@ -182,6 +183,7 @@ model CsvImport {
   rowsOk      Int          @default(0)
   rowsFailed  Int          @default(0)
   errorLog    Json?
+  errorCsvKey String?
   jobId       String?
   startedAt   DateTime?
   finishedAt  DateTime?
@@ -189,6 +191,22 @@ model CsvImport {
 
   @@index([workerId])
   @@map("csv_imports")
+  @@schema("earnings")
+}
+
+// ─── In-app notifications ──────────────────────────────────────────────────────
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@map("notifications")
   @@schema("earnings")
 }
 

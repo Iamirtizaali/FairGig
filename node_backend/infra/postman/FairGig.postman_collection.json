@@ -11,7 +11,8 @@
     { "key": "baseUrl_certificate", "value": "http://localhost:3003" },
     { "key": "baseUrl_grievance",   "value": "http://localhost:3004" },
     { "key": "accessToken",         "value": "" },
-    { "key": "shiftId",             "value": "" }
+    { "key": "shiftId",             "value": "" },
+    { "key": "importId",            "value": "" }
   ],
   "item": [
     {
@@ -245,6 +246,53 @@
             "method": "GET",
             "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
             "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}/screenshots/url", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}","screenshots","url"] }
+          }
+        },
+        {
+          "name": "Verification — Submit Decision",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"decision\": \"confirmed\",\n  \"notes\": \"Screenshots match the reported earnings.\"\n}" },
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/shifts/{{shiftId}}/verify", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","shifts","{{shiftId}}","verify"] }
+          }
+        },
+        {
+          "name": "Verification — Queue (Verifier/Admin)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl_earnings}}/earnings/v1/verification/queue?page=1&limit=20",
+              "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","verification","queue"],
+              "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}]
+            }
+          }
+        },
+        {
+          "name": "CSV Import — Download Template",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/imports/template", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","imports","template"] }
+          }
+        },
+        {
+          "name": "CSV Import — Upload CSV",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.importId)pm.collectionVariables.set('importId',j.data.importId);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "formdata", "formdata": [{ "key": "file", "type": "file", "src": "/path/to/shifts.csv" }] },
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/imports/csv", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","imports","csv"] }
+          }
+        },
+        {
+          "name": "CSV Import — Poll Status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_earnings}}/earnings/v1/imports/{{importId}}", "host": ["{{baseUrl_earnings}}"], "path": ["earnings","v1","imports","{{importId}}"] }
           }
         }
       ]

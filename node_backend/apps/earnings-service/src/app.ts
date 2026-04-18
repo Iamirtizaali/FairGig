@@ -9,6 +9,8 @@ import { healthRouter } from './routes/health.routes';
 import { platformsRouter } from './routes/platforms.routes';
 import { shiftsRouter } from './routes/shifts.routes';
 import { screenshotsRouter } from './routes/screenshots.routes';
+import { verificationRouter } from './routes/verification.routes';
+import { importsRouter } from './routes/imports.routes';
 import { setupSwagger } from './swagger';
 import { env } from './config/env';
 
@@ -37,6 +39,8 @@ export function buildApp(): Application {
   app.use('/earnings/v1', platformsRouter);
   app.use('/earnings/v1/shifts', shiftsRouter);
   app.use('/earnings/v1', screenshotsRouter);
+  app.use('/earnings/v1', verificationRouter);
+  app.use('/earnings/v1', importsRouter);
 
   // ── Error handler (must be last) ───────────────────────────────────────────
   app.use(errorHandler);

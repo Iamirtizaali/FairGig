@@ -31,3 +31,21 @@ export async function createSignedDownloadUrl(storageKey: string, expiresInSecon
 export async function deleteStorageFile(storageKey: string): Promise<void> {
   await getSupabase().storage.from(env.SUPABASE_BUCKET).remove([storageKey]);
 }
+
+export async function uploadCsvToStorage(storageKey: string, buffer: Buffer): Promise<void> {
+  const { error } = await getSupabase()
+    .storage
+    .from(env.SUPABASE_BUCKET)
+    .upload(storageKey, buffer, { contentType: 'text/csv', upsert: false });
+  if (error) throw new Error(`Storage upload failed: ${error.message}`);
+}
+
+export async function downloadFromStorage(storageKey: string): Promise<Buffer> {
+  const { data, error } = await getSupabase()
+    .storage
+    .from(env.SUPABASE_BUCKET)
+    .download(storageKey);
+  if (error) throw new Error(`Storage download failed: ${error.message}`);
+  const ab = await data.arrayBuffer();
+  return Buffer.from(ab);
+}

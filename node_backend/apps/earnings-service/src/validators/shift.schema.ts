@@ -56,7 +56,14 @@ export const listShiftsSchema = z.object({
     .optional(),
 });
 
+export const verifyShiftSchema = z.object({
+  decision: z.enum(['confirmed', 'discrepancy', 'unverifiable']),
+  screenshotId: z.string().optional(),
+  notes: z.string().max(1000).optional(),
+});
+
 export type CreateShiftInput = z.infer<typeof createShiftSchema>;
 export type UpdateShiftInput = z.infer<typeof updateShiftSchema>;
 export type PresignInput = z.infer<typeof presignSchema>;
 export type ConfirmScreenshotInput = z.infer<typeof confirmScreenshotSchema>;
+export type VerifyShiftInput = z.infer<typeof verifyShiftSchema>;

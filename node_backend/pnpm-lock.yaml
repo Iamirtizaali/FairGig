@@ -256,6 +256,9 @@ importers:
       csv-parse:
         specifier: ^5.6.0
         version: 5.6.0
+      csv-stringify:
+        specifier: ^6.5.2
+        version: 6.7.0
       dotenv:
         specifier: ^16.4.5
         version: 16.6.1
@@ -277,6 +280,9 @@ importers:
       multer:
         specifier: ^1.4.5-lts.1
         version: 1.4.5-lts.2
+      nodemailer:
+        specifier: ^6.9.16
+        version: 6.10.1
       pino:
         specifier: ^9.5.0
         version: 9.14.0
@@ -311,6 +317,9 @@ importers:
       '@types/node':
         specifier: ^22.10.2
         version: 22.19.17
+      '@types/nodemailer':
+        specifier: ^6.4.17
+        version: 6.4.23
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.3
@@ -1482,6 +1491,9 @@ packages:
 
   csv-parse@5.6.0:
     resolution: {integrity: sha512-l3nz3euub2QMg5ouu5U09Ew9Wf6/wQ8I++ch1loQ0ljmzhmfZYrH9fflS22i/PQEvsPvxCwxgz5q7UB8K1JO4Q==}
+
+  csv-stringify@6.7.0:
+    resolution: {integrity: sha512-UdtziYp5HuTz7e5j8Nvq+a/3HQo+2/aJZ9xntNTpmRRIg/3YYqDVgiS9fvAhtNbnyfbv2ZBe0bqCHqzhE7FqWQ==}
 
   date-fns@2.30.0:
     resolution: {integrity: sha512-fnULvOpxnC5/Vg3NCiWelDsLiUc9bRwAPs/+LfTLNvetFCtCTN+yQz15C/fs4AwX1R9K5GLtLfn8QW+dWisaAw==}
@@ -3610,6 +3622,8 @@ snapshots:
       which: 2.0.2
 
   csv-parse@5.6.0: {}
+
+  csv-stringify@6.7.0: {}
 
   date-fns@2.30.0:
     dependencies:
