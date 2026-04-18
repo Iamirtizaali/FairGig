@@ -3,7 +3,7 @@ import random
 import datetime
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import Column, Integer, String, Float, Boolean, Date, select
+from sqlalchemy import Column, Integer, String, Float, Boolean, Date, DateTime, select, text
 from app.config import settings
 
 engine = create_async_engine(
@@ -45,6 +45,34 @@ class Shift(Base):
     platform_deductions = Column(Float)
     net_received = Column(Float)
     is_verified = Column(Boolean, default=True, index=True)
+
+class Complaint(Base):
+    """
+    Simulates grievance.complaints from Person B's schema.
+    In production, the analytics_reader role has read-only cross-schema access.
+    Locally we seed this table to test the top-complaints endpoint.
+    """
+    __tablename__ = "complaints"
+
+    id = Column(Integer, primary_key=True, index=True)
+    worker_id = Column(String, index=True)
+    category = Column(String, index=True)   # e.g. 'Deduction Dispute', 'Late Payment'
+    created_at = Column(Date, index=True)
+    zone = Column(String)
+
+class VulnerabilityFlag(Base):
+    """
+    Materialised view equivalent — written by the nightly vulnerability job.
+    """
+    __tablename__ = "vulnerability_flags"
+
+    worker_id = Column(String, primary_key=True)
+    zone = Column(String)
+    category = Column(String)
+    prior_month_income = Column(Float)
+    current_month_income = Column(Float)
+    drop_pct = Column(Float)
+    computed_at = Column(Date)
 
 async def get_db():
     async with AsyncSessionLocal() as db:
@@ -115,4 +143,27 @@ async def init_db():
             
             # Batch add the 9,000 shifts incrementally
             session.add_all(shifts)
+            await session.commit()
+
+    async with AsyncSessionLocal() as session:
+        # Seed complaints if empty (simulates grievance.complaints cross-schema data)
+        complaint_check = await session.execute(select(Complaint).limit(1))
+        if not complaint_check.scalars().first():
+            complaint_categories = [
+                "Deduction Dispute", "Late Payment", "App Glitch",
+                "Unfair Rating", "Missing Bonus", "Incorrect Hours"
+            ]
+            zones = ["Downtown", "Northside", "Westend"]
+            complaints = []
+            base_date = datetime.date.today() - datetime.timedelta(days=30)
+            for i in range(1, 101):
+                # Each worker files 1–4 complaints over the last 30 days
+                for _ in range(random.randint(1, 4)):
+                    complaints.append(Complaint(
+                        worker_id=f"W-{i}",
+                        category=random.choice(complaint_categories),
+                        created_at=base_date + datetime.timedelta(days=random.randint(0, 29)),
+                        zone=random.choice(zones)
+                    ))
+            session.add_all(complaints)
             await session.commit()
