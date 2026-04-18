@@ -1,5 +1,5 @@
 import { prisma } from '../lib/prisma';
-import { Role, RequestStatus } from '@prisma/client';
+import { Role, RequestStatus } from '../generated/prisma';
 
 export const roleRequestRepository = {
   async create(data: { userId: string; requestedRole: Role; reason?: string }) {

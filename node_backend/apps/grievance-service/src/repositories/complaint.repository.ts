@@ -1,5 +1,5 @@
 import { getPrisma } from '../lib/prisma';
-import type { ComplaintStatus, ComplaintVisibility } from '@prisma/client';
+import type { ComplaintStatus, ComplaintVisibility } from '../generated/prisma';
 
 const prisma = getPrisma();
 

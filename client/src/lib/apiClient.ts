@@ -75,6 +75,12 @@ apiClient.interceptors.response.use(
         const newToken = data.data!.accessToken
         setApiToken(newToken)
 
+        // Sync new token into Zustand so UI and future requests stay in sync
+        import('@/stores/auth').then(({ useAuthStore }) => {
+          const state = useAuthStore.getState()
+          if (state.user) state.setCredentials(state.user, newToken)
+        })
+
         // Flush the queued requests with the new token
         _refreshQueue.forEach(({ resolve }) => resolve(newToken))
         _refreshQueue = []
@@ -85,6 +91,10 @@ apiClient.interceptors.response.use(
         _refreshQueue.forEach(({ reject }) => reject(refreshError))
         _refreshQueue = []
         setApiToken(null)
+        // Clear Zustand auth state so UI shows sign-in
+        import('@/stores/auth').then(({ useAuthStore }) => {
+          useAuthStore.getState().clearAuth()
+        })
         if (typeof window !== 'undefined') {
           window.location.href = '/auth/sign-in'
         }

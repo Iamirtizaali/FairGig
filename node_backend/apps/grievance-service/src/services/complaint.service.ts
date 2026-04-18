@@ -10,7 +10,7 @@ import type {
   AddCommentInput,
   ReportComplaintInput,
 } from '../validators/grievance.schema';
-import type { ComplaintStatus } from '@prisma/client';
+import type { ComplaintStatus } from '../generated/prisma';
 
 type Role = 'worker' | 'verifier' | 'advocate' | 'admin';
 

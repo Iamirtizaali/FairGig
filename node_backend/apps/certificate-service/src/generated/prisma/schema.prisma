@@ -1,0 +1,100 @@
+// Certificate Service — Prisma Schema
+// Schemas owned: earnings (certificates table), audit (events read)
+// Read-only access to: earnings.shifts, earnings.platforms
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+  output          = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["earnings", "audit"]
+}
+
+// ─── Read-only models (owned by earnings-service) ────────────────────────────
+
+model Shift {
+  id                 String    @id
+  workerId           String
+  platformId         String
+  cityZoneId         String?
+  shiftDate          DateTime  @db.Date
+  hoursWorked        Decimal   @db.Decimal(6, 2)
+  grossPay           Decimal   @db.Decimal(12, 2)
+  deductions         Decimal   @db.Decimal(12, 2)
+  netPay             Decimal   @db.Decimal(12, 2)
+  currency           String    @db.Char(3)
+  verificationStatus String
+  deletedAt          DateTime?
+  createdAt          DateTime  @default(now())
+
+  platform Platform  @relation(fields: [platformId], references: [id])
+  cityZone CityZone? @relation(fields: [cityZoneId], references: [id])
+
+  @@map("shifts")
+  @@schema("earnings")
+}
+
+model Platform {
+  id        String   @id
+  name      String
+  slug      String
+  logoUrl   String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  shifts    Shift[]
+
+  @@map("platforms")
+  @@schema("earnings")
+}
+
+model CityZone {
+  id        String   @id
+  city      String
+  zone      String
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  shifts    Shift[]
+
+  @@map("city_zones")
+  @@schema("earnings")
+}
+
+// ─── Certificate records ──────────────────────────────────────────────────────
+
+model Certificate {
+  id          String    @id @default(cuid())
+  workerId    String
+  periodStart DateTime  @db.Date
+  periodEnd   DateTime  @db.Date
+  shareToken  String    @unique @default(uuid())
+  expiresAt   DateTime
+  revokedAt   DateTime?
+  issuedAt    DateTime  @default(now())
+
+  @@index([workerId])
+  @@index([shareToken])
+  @@map("certificates")
+  @@schema("earnings")
+}
+
+// ─── Audit events (append-only, written by this service) ─────────────────────
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorRole String?
+  action    String
+  entity    String
+  entityId  String
+  diff      Json     @default("{}")
+  ip        String?
+  ua        String?
+  createdAt DateTime @default(now())
+
+  @@map("events")
+  @@schema("audit")
+}

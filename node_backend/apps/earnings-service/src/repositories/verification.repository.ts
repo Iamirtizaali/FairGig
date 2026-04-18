@@ -1,5 +1,5 @@
 import { getPrisma } from '../lib/prisma';
-import type { VerificationStatus } from '@prisma/client';
+import type { VerificationStatus } from '../generated/prisma';
 
 const prisma = getPrisma();
 

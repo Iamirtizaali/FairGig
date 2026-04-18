@@ -29,7 +29,7 @@ export const defaultRateLimit = rateLimit({
 
 export const authRateLimit = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: 100,
   standardHeaders: true,
   legacyHeaders: false,
   message: errorBody('RATE_LIMIT_EXCEEDED', 'Too many authentication attempts. Try again in a minute.'),

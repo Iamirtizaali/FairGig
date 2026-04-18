@@ -1,36 +1,59 @@
-import { Activity, Clock, DollarSign, Target, Plus, ShieldCheck } from 'lucide-react'
+import { Activity, Clock, DollarSign, Target, Plus, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { motion } from 'framer-motion'
+import { useMemo } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiTile } from '@/components/shared/KpiTile'
-import { StatusBadge } from '@/components/shared/StatusBadge'
+import { StatusBadge, type VerificationStatus } from '@/components/shared/StatusBadge'
 import { PlatformChip } from '@/components/shared/PlatformChip'
 import { Button } from '@/components/ui/button'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { fadeUp, staggerContainer } from '@/lib/motion'
 import { font } from '@/lib/fonts'
+import { useShiftsQuery } from '@/features/shifts/api'
+import { useAuthStore } from '@/stores/auth'
+import type { ShiftVerificationStatus } from '@/types/earnings'
 
-// ─── Dummy Data ───────────────────────────────────────────────────────────────
-const MOCK_SHIFTS = [
-  { id: 'SH-4092-1', platform: 'Careem', date: 'Oct 24 • 09:00 - 15:30', amount: 3450, status: 'VERIFIED' },
-  { id: 'SH-4091-8', platform: 'Bykea', date: 'Oct 23 • 18:00 - 22:00', amount: 1800, status: 'PENDING' },
-  { id: 'SH-4090-2', platform: 'Uber', date: 'Oct 23 • 07:00 - 13:00', amount: 2900, status: 'VERIFIED' },
-  { id: 'SH-4089-9', platform: 'Foodpanda', date: 'Oct 22 • 11:00 - 15:00', amount: 1450, status: 'DISCREPANCY_FLAGGED' },
-] as const
-
-const NAV_ITEMS: NavItem[] = [
-  { icon: <Activity className="h-5 w-5" />, label: 'Dashboard', href: '/worker/dashboard' },
-  { icon: <Clock className="h-5 w-5" />, label: 'Shifts & Earnings', href: '/worker/shifts', activeMatch: '/worker/shifts' },
-  { icon: <ShieldCheck className="h-5 w-5" />, label: 'Certificates', href: '/worker/certificate' },
-  // Add rest in next steps...
-]
+// ─── Map backend status → StatusBadge key ─────────────────────────────────────
+function toVerificationStatus(s: ShiftVerificationStatus): VerificationStatus {
+  switch (s) {
+    case 'verified':            return 'VERIFIED'
+    case 'pending_review':      return 'PENDING'
+    case 'discrepancy_flagged': return 'DISCREPANCY_FLAGGED'
+    case 'unverifiable':        return 'UNVERIFIABLE'
+    case 'self_attested':
+    default:                    return 'SELF_ATTESTED'
+  }
+}
 
 export default function WorkerDashboardPage() {
+  const user = useAuthStore((s) => s.user)
+  const { data, isLoading, isError } = useShiftsQuery({ page: 1, limit: 4 })
+
+  // Derive KPIs from full summary — backend returns paginated set for dashboard
+  // For richer KPIs we use a separate wider query (capped at backend max of 100)
+  const { data: allData } = useShiftsQuery({ limit: 100 })
+
+  const kpis = useMemo(() => {
+    const shifts = allData?.shifts ?? []
+    const verified = shifts.filter((s) => s.verificationStatus === 'verified')
+    const pending  = shifts.filter((s) => s.verificationStatus === 'pending_review')
+    const flagged  = shifts.filter((s) => s.verificationStatus === 'discrepancy_flagged')
+
+    const verifiedIncome = verified.reduce((sum, s) => sum + Number(s.netPay), 0)
+    const pendingIncome  = pending.reduce((sum, s) => sum + Number(s.netPay), 0)
+    const trustScore     = shifts.length > 0 ? Math.round((verified.length / shifts.length) * 100) : 0
+
+    return { verifiedIncome, pendingIncome, trustScore, disputes: flagged.length }
+  }, [allData])
+
+  const recentShifts = data?.shifts ?? []
+
   return (
     <div className="w-full h-full">
       <div className="max-w-6xl mx-auto">
         <PageHeader
-          heading="Welcome back, Ahad."
+          heading={`Welcome back, ${user?.name?.split(' ')[0] ?? 'Worker'}.`}
           subtext="Overview of your recent earnings and verification statuses."
           actions={
             <Button asChild className="bg-[#00D4FF] text-[#0A0E1A] hover:bg-[#00D4FF]/90 font-bold">
@@ -52,34 +75,28 @@ export default function WorkerDashboardPage() {
           <KpiTile
             icon={<DollarSign className="w-5 h-5" />}
             label="Verified Income"
-            value={85400}
+            value={kpis.verifiedIncome}
             prefix="Rs "
-            trend={12}
-            trendLabel="12% vs last month"
             accentColor="#6EE7B7"
           />
           <KpiTile
             icon={<Clock className="w-5 h-5" />}
             label="Pending Verification"
-            value={14200}
+            value={kpis.pendingIncome}
             prefix="Rs "
             accentColor="#F59E0B"
           />
           <KpiTile
             icon={<Target className="w-5 h-5" />}
             label="Trust Score"
-            value={92}
+            value={kpis.trustScore}
             suffix="%"
-            trend={2}
-            trendLabel="2% vs last month"
             accentColor="#00D4FF"
           />
           <KpiTile
             icon={<Activity className="w-5 h-5" />}
             label="Active Disputes"
-            value={1}
-            trend={-1}
-            trendLabel="Down from 2"
+            value={kpis.disputes}
             accentColor="#F87171"
           />
         </motion.div>
@@ -97,39 +114,64 @@ export default function WorkerDashboardPage() {
               <Link to="/worker/shifts">View All</Link>
             </Button>
           </div>
-          
-          <Table>
-            <TableHeader className="bg-[#111827]">
-              <TableRow className="border-[#1E293B] hover:bg-transparent">
-                <TableHead className="text-[#94A3B8] font-medium h-10">Shift ID</TableHead>
-                <TableHead className="text-[#94A3B8] font-medium h-10">Platform</TableHead>
-                <TableHead className="text-[#94A3B8] font-medium h-10">Date & Time</TableHead>
-                <TableHead className="text-[#94A3B8] font-medium h-10 text-right">Amount (PKR)</TableHead>
-                <TableHead className="text-[#94A3B8] font-medium h-10 text-right">Verification</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MOCK_SHIFTS.map((shift) => (
-                <TableRow key={shift.id} className="border-[#1E293B] hover:bg-white/5 transition-colors">
-                  <TableCell className={`font-mono text-sm text-[#94A3B8] ${font.mono}`}>
-                    <Link to={`/worker/shifts/${shift.id}`} className="hover:text-white transition-colors">
-                      {shift.id}
-                    </Link>
-                  </TableCell>
-                  <TableCell>
-                    <PlatformChip platform={shift.platform} />
-                  </TableCell>
-                  <TableCell className="text-[#F1F5F9]">{shift.date}</TableCell>
-                  <TableCell className={`text-right font-medium text-white ${font.mono}`}>
-                    Rs {shift.amount.toLocaleString()}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <StatusBadge status={shift.status as any} />
-                  </TableCell>
+
+          {isLoading && (
+            <div className="flex items-center justify-center py-16 gap-3 text-[#94A3B8]">
+              <Loader2 className="h-5 w-5 animate-spin text-[#00D4FF]" />
+              <span>Loading shifts…</span>
+            </div>
+          )}
+
+          {isError && (
+            <div className="flex items-center justify-center py-16 gap-3 text-[#F87171]">
+              <AlertTriangle className="h-5 w-5" />
+              <span>Failed to load shifts. Check your connection.</span>
+            </div>
+          )}
+
+          {!isLoading && !isError && recentShifts.length === 0 && (
+            <div className="flex flex-col items-center justify-center py-16 gap-2 text-[#94A3B8]">
+              <Activity className="h-8 w-8 opacity-30" />
+              <p className="text-sm">No shifts yet. Log your first shift to get started.</p>
+            </div>
+          )}
+
+          {!isLoading && !isError && recentShifts.length > 0 && (
+            <Table>
+              <TableHeader className="bg-[#111827]">
+                <TableRow className="border-[#1E293B] hover:bg-transparent">
+                  <TableHead className="text-[#94A3B8] font-medium h-10">Shift ID</TableHead>
+                  <TableHead className="text-[#94A3B8] font-medium h-10">Platform</TableHead>
+                  <TableHead className="text-[#94A3B8] font-medium h-10">Date</TableHead>
+                  <TableHead className="text-[#94A3B8] font-medium h-10 text-right">Amount (PKR)</TableHead>
+                  <TableHead className="text-[#94A3B8] font-medium h-10 text-right">Verification</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {recentShifts.map((shift) => (
+                  <TableRow key={shift.id} className="border-[#1E293B] hover:bg-white/5 transition-colors">
+                    <TableCell className={`font-mono text-sm text-[#94A3B8] ${font.mono}`}>
+                      <Link to={`/worker/shifts/${shift.id}`} className="hover:text-white transition-colors">
+                        {shift.id.slice(0, 12)}…
+                      </Link>
+                    </TableCell>
+                    <TableCell>
+                      <PlatformChip platform={shift.platform.name} />
+                    </TableCell>
+                    <TableCell className="text-[#F1F5F9]">
+                      {new Date(shift.shiftDate).toLocaleDateString('en-PK', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </TableCell>
+                    <TableCell className={`text-right font-medium text-white ${font.mono}`}>
+                      Rs {Number(shift.netPay).toLocaleString()}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <StatusBadge status={toVerificationStatus(shift.verificationStatus)} />
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </motion.div>
       </div>
     </div>
