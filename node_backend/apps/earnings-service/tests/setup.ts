@@ -1,0 +1,11 @@
+process.env.NODE_ENV = 'test';
+process.env.DATABASE_URL = 'postgresql://test:test@localhost:5432/test';
+process.env.JWT_SECRET = 'test-secret-that-is-at-least-32-chars-long-for-validation';
+process.env.FRONTEND_ORIGINS = 'http://localhost:5173';
+process.env.LOG_LEVEL = 'error';
+process.env.UPSTASH_REDIS_REST_URL = 'https://test.upstash.io';
+process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
+process.env.SUPABASE_URL = 'https://test.supabase.co';
+process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
+process.env.SUPABASE_BUCKET = 'fairgig';
+process.env.ANOMALY_SERVICE_URL = 'http://localhost:8000';

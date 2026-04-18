@@ -1,0 +1,156 @@
+services:
+  # ─── auth-service ────────────────────────────────────────────────────────────
+  - type: web
+    name: fairgig-auth
+    runtime: node
+    rootDir: apps/auth-service
+    buildCommand: pnpm install --frozen-lockfile && pnpm build && pnpm prisma:generate
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: ACCESS_TOKEN_EXPIRY
+        value: 15m
+      - key: REFRESH_TOKEN_EXPIRY
+        value: 7d
+      - key: COOKIE_SECRET
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: RESEND_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: RESET_TOKEN_BASE_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # ─── earnings-service ────────────────────────────────────────────────────────
+  - type: web
+    name: fairgig-earnings
+    runtime: node
+    rootDir: apps/earnings-service
+    buildCommand: pnpm install --frozen-lockfile && pnpm build && pnpm prisma:generate
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3002
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: UPSTASH_REDIS_REST_URL
+        sync: false
+      - key: UPSTASH_REDIS_REST_TOKEN
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_BUCKET
+        value: fairgig
+      - key: ANOMALY_SERVICE_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # ─── certificate-service ─────────────────────────────────────────────────────
+  - type: web
+    name: fairgig-certificate
+    runtime: node
+    rootDir: apps/certificate-service
+    buildCommand: pnpm install --frozen-lockfile && pnpm build && pnpm prisma:generate
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3003
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: CERT_SHARE_BASE_URL
+        sync: false
+      - key: CERT_SHARE_TTL_DAYS
+        value: 14
+      - key: LOG_LEVEL
+        value: info
+
+  # ─── grievance-service ───────────────────────────────────────────────────────
+  - type: web
+    name: fairgig-grievance
+    runtime: node
+    rootDir: apps/grievance-service
+    buildCommand: pnpm install --frozen-lockfile && pnpm build && pnpm prisma:generate
+    startCommand: node dist/index.js
+    healthCheckPath: /health
+    autoDeploy: true
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3004
+      - key: DATABASE_URL
+        sync: false
+      - key: JWT_SECRET
+        sync: false
+      - key: FRONTEND_ORIGINS
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # ─── Nightly cleanup: auth tokens ────────────────────────────────────────────
+  - type: cron
+    name: fairgig-auth-cleanup
+    runtime: node
+    rootDir: apps/auth-service
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    schedule: "0 2 * * *"
+    startCommand: node dist/jobs/cleanup.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: info
+
+  # ─── Nightly cleanup: expired certificates ───────────────────────────────────
+  - type: cron
+    name: fairgig-certificate-cleanup
+    runtime: node
+    rootDir: apps/certificate-service
+    buildCommand: pnpm install --frozen-lockfile && pnpm build
+    schedule: "0 3 * * *"
+    startCommand: node dist/jobs/cleanup.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: DATABASE_URL
+        sync: false
+      - key: LOG_LEVEL
+        value: info
