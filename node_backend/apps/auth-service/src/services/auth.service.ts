@@ -1,5 +1,6 @@
 import bcrypt from 'bcrypt';
 import { Role } from '@prisma/client';
+import { env } from '../config/env';
 import { userRepository } from '../repositories/user.repository';
 import { refreshTokenRepository } from '../repositories/refreshToken.repository';
 import { roleRequestRepository } from '../repositories/roleRequest.repository';
@@ -161,14 +162,16 @@ export async function forgotPassword(email: string) {
     return; // silent — never reveal whether email exists
   }
 
+  await passwordResetTokenRepository.invalidateAllForUser(user.id);
+
   const rawToken = generateRefreshTokenValue();
   await passwordResetTokenRepository.create({
     userId: user.id,
     tokenHash: hashToken(rawToken),
-    expiresAt: new Date(Date.now() + 60 * 60 * 1000), // 1 hour
+    expiresAt: new Date(Date.now() + env.RESET_TOKEN_EXPIRY_HOURS * 60 * 60 * 1000),
   });
 
-  await sendPasswordResetEmail(user.email, rawToken);
+  await sendPasswordResetEmail(user.email, rawToken, env.RESET_TOKEN_EXPIRY_HOURS);
   logger.info({ userId: user.id, email: user.email }, 'Password reset email dispatched');
 }
 

@@ -33,10 +33,11 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
   return transporter;
 }
 
-export async function sendPasswordResetEmail(to: string, resetToken: string): Promise<void> {
-  const resetUrl = `${env.RESET_TOKEN_BASE_URL}/auth/reset/${resetToken}`;
+export async function sendPasswordResetEmail(to: string, resetToken: string, expiryHours = 24): Promise<void> {
+  const resetUrl = `${env.RESET_TOKEN_BASE_URL}?token=${resetToken}`;
   const t = await getTransporter();
   const fromAddress = env.EMAIL_FROM ?? env.GMAIL_USER ?? 'noreply@fairgig.app';
+  const expiryLabel = expiryHours === 1 ? '1 hour' : `${expiryHours} hours`;
 
   const info = await t.sendMail({
     from: `"FairGig" <${fromAddress}>`,
@@ -45,14 +46,14 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
     text: [
       'You requested a password reset.',
       '',
-      `Reset link (expires in 1 hour): ${resetUrl}`,
+      `Reset link (expires in ${expiryLabel}): ${resetUrl}`,
       '',
       'If you did not request this, you can safely ignore this email.',
     ].join('\n'),
     html: `
       <p>You requested a password reset for your FairGig account.</p>
       <p><a href="${resetUrl}" style="color:#0066cc">Click here to reset your password</a></p>
-      <p>This link expires in <strong>1 hour</strong>.</p>
+      <p>This link expires in <strong>${expiryLabel}</strong>.</p>
       <p>If you did not request this, you can safely ignore this email.</p>
     `,
   });

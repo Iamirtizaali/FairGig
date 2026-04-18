@@ -14,7 +14,8 @@ const envSchema = z.object({
   GMAIL_USER: z.string().email().optional(),
   GMAIL_APP_PASSWORD: z.string().min(1).optional(),
   EMAIL_FROM: z.string().email().optional(),
-  RESET_TOKEN_BASE_URL: z.string().default('http://localhost:5173'),
+  RESET_TOKEN_BASE_URL: z.string().default('http://localhost:5173/reset-password'),
+  RESET_TOKEN_EXPIRY_HOURS: z.coerce.number().int().positive().default(24),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });
 
