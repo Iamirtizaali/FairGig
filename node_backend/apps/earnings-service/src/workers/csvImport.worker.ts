@@ -1,18 +1,20 @@
-import { Worker, Job } from 'bullmq';
 import { parse } from 'csv-parse';
 import { Readable } from 'stream';
 import { stringify } from 'csv-stringify/sync';
-import { getRedis } from '../lib/redis';
 import { getPrisma } from '../lib/prisma';
 import { logger } from '../utils/logger';
 import { csvImportRepository } from '../repositories/csvImport.repository';
 import { downloadFromStorage, uploadCsvToStorage } from '../integrations/storage';
 import { notifyUser } from '../services/notification.service';
 import { createShiftSchema } from '../validators/shift.schema';
-import type { CsvImportJobData } from '../queues/csvImport.queue';
+import { csvImportQueue, type CsvImportJob } from '../queues/csvImport.queue';
 
 const prisma = getPrisma();
 const BATCH_SIZE = 500;
+const POLL_INTERVAL_MS = 1000;
+
+let workerStarted = false;
+let stopRequested = false;
 
 interface CsvRow {
   platformId: string;
@@ -31,7 +33,7 @@ interface ErrorRow extends CsvRow {
   _row: number;
 }
 
-async function processCsvImport(job: Job<CsvImportJobData>): Promise<void> {
+async function processCsvImport(job: CsvImportJob): Promise<void> {
   const { importId, workerId, storageKey } = job.data;
   logger.info({ jobId: job.id, importId }, 'csv-import job started');
 
@@ -94,7 +96,6 @@ async function processCsvImport(job: Job<CsvImportJobData>): Promise<void> {
             const batch = validBatch.splice(0, BATCH_SIZE);
             await prisma.shift.createMany({ data: batch as never[], skipDuplicates: true });
             rowsOk += batch.length;
-            await job.updateProgress(Math.round((rowsTotal / Math.max(rowsTotal, 1)) * 100));
           }
         }
       });
@@ -148,18 +149,29 @@ async function processCsvImport(job: Job<CsvImportJobData>): Promise<void> {
   }
 }
 
-export function startCsvImportWorker(): Worker<CsvImportJobData> {
-  const worker = new Worker<CsvImportJobData>('csv-import', processCsvImport, {
-    connection: getRedis(),
-    concurrency: 2,
-  });
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
 
-  worker.on('completed', (job) =>
-    logger.info({ jobId: job.id }, 'csv-import job completed'),
-  );
-  worker.on('failed', (job, err) =>
-    logger.error({ jobId: job?.id, err }, 'csv-import job failed'),
-  );
+async function runWorkerLoop(): Promise<void> {
+  while (!stopRequested) {
+    try {
+      const job = await csvImportQueue.pop();
+      if (!job) {
+        await sleep(POLL_INTERVAL_MS);
+        continue;
+      }
 
-  return worker;
+      await processCsvImport(job);
+    } catch (err) {
+      logger.error({ err }, 'csv-import worker loop failed');
+      await sleep(POLL_INTERVAL_MS);
+    }
+  }
+}
+
+export function startCsvImportWorker(): void {
+  if (workerStarted) return;
+  workerStarted = true;
+  void runWorkerLoop();
 }

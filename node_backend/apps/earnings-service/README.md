@@ -10,7 +10,7 @@ Shift logging, CSV bulk import, screenshot upload, and verification workflow for
 - Node.js ≥ 20
 - pnpm ≥ 9
 - PostgreSQL instance
-- Redis (Upstash free tier or local) — used by BullMQ for CSV import jobs
+- Upstash Redis REST credentials for CSV import jobs
 - Supabase project (for screenshot object storage)
 - Run `infra/db/init.sql` against your DB once to create schemas
 
@@ -38,7 +38,7 @@ Service starts at: **http://localhost:3002**
 ## Endpoints (Sprint 0)
 
 | Method | Path      | Auth | Description    |
-|--------|-----------|------|----------------|
+| ------ | --------- | ---- | -------------- |
 | GET    | `/health` | —    | Liveness check |
 | GET    | `/docs`   | —    | Swagger UI     |
 
@@ -46,14 +46,15 @@ Service starts at: **http://localhost:3002**
 
 See [.env.example](./.env.example) for full list.
 
-| Variable                   | Required | Default                |
-|----------------------------|----------|------------------------|
-| `DATABASE_URL`             | ✅        | —                      |
-| `JWT_SECRET`               | ✅        | —                      |
-| `REDIS_URL`                | ✅        | `redis://localhost:6379`|
-| `SUPABASE_URL`             | ✅ (prod) | —                      |
-| `SUPABASE_SERVICE_ROLE_KEY`| ✅ (prod) | —                      |
+| Variable                    | Required  | Default |
+| --------------------------- | --------- | ------- |
+| `DATABASE_URL`              | ✅        | —       |
+| `JWT_SECRET`                | ✅        | —       |
+| `UPSTASH_REDIS_REST_URL`    | ✅        | —       |
+| `UPSTASH_REDIS_REST_TOKEN`  | ✅        | —       |
+| `SUPABASE_URL`              | ✅ (prod) | —       |
+| `SUPABASE_SERVICE_ROLE_KEY` | ✅ (prod) | —       |
 
 ## Tech Stack
 
-Express · TypeScript · Prisma · Zod · pino · multer · csv-parse · BullMQ · ioredis · @supabase/supabase-js
+Express · TypeScript · Prisma · Zod · pino · multer · csv-parse · @upstash/redis · @supabase/supabase-js

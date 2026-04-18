@@ -6,7 +6,8 @@ const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   JWT_SECRET: z.string().min(32, 'JWT_SECRET must be at least 32 characters'),
   FRONTEND_ORIGINS: z.string().default('http://localhost:5173'),
-  REDIS_URL: z.string().default('redis://localhost:6379'),
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
   SUPABASE_URL: z.string().optional(),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
   SUPABASE_BUCKET: z.string().default('fairgig-screenshots'),
@@ -28,6 +29,5 @@ if (!parsed.success) {
   process.exit(1);
 }
 
-console.log(parsed.data);
 export const env = parsed.data;
 export type Env = typeof env;

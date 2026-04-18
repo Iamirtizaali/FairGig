@@ -1,18 +1,21 @@
-import Redis from 'ioredis';
+import { Redis } from '@upstash/redis';
 import { env } from '../config/env';
-import { logger } from '../utils/logger';
 
-let _redis: Redis | null = null;
+type RedisClient = Redis;
 
-export function getRedis(): Redis {
-  if (!_redis) {
-    _redis = new Redis(env.REDIS_URL, {
-      maxRetriesPerRequest: null, // required by BullMQ
-      enableReadyCheck: false,
-      lazyConnect: false,
-      connectTimeout: 10000,
+let redisClient: RedisClient | null = null;
+
+export function getRedis(): RedisClient {
+  if (!redisClient) {
+    if (!env.UPSTASH_REDIS_REST_URL || !env.UPSTASH_REDIS_REST_TOKEN) {
+      throw new Error('UPSTASH_REDIS_REST_URL and UPSTASH_REDIS_REST_TOKEN are required');
+    }
+
+    redisClient = new Redis({
+      url: env.UPSTASH_REDIS_REST_URL,
+      token: env.UPSTASH_REDIS_REST_TOKEN,
     });
-    _redis.on('error', (err) => logger.warn({ err }, 'redis error'));
   }
-  return _redis;
+
+  return redisClient;
 }

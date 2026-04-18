@@ -2,8 +2,11 @@ import 'dotenv/config';
 import { buildApp } from './app';
 import { env } from './config/env';
 import { logger } from './utils/logger';
+import { startCsvImportWorker } from './workers/csvImport.worker';
 
 const app = buildApp();
+
+startCsvImportWorker();
 
 const server = app.listen(env.PORT, () => {
   logger.info(

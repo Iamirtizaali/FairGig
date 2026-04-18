@@ -1,6 +1,6 @@
 import rateLimit from 'express-rate-limit';
 import { RedisStore } from 'rate-limit-redis';
-import { getRedis } from '../lib/redis';
+import { getRedis, sendRedisCommand } from '../lib/redis';
 
 const errorBody = (code: string, message: string) => ({
   data: null,
@@ -13,10 +13,7 @@ function redisStoreOptions() {
   if (!redis) return {};
   return {
     store: new RedisStore({
-      sendCommand: async (...args: string[]) => {
-        const [cmd, ...rest] = args;
-        return (redis as any)[cmd.toLowerCase()](...rest);
-      },
+      sendCommand: sendRedisCommand,
     }),
   };
 }
