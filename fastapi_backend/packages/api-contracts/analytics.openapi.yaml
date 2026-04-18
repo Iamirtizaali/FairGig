@@ -1,0 +1,11 @@
+openapi: 3.0.3
+info:
+  title: FairGig Analytics Service API
+  version: 1.0.0
+paths:
+  /benchmark/city-median:
+    get:
+      summary: Get median benchmark
+      responses:
+        "200":
+          description: OK
