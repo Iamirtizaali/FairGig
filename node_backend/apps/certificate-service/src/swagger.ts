@@ -16,7 +16,59 @@ const options: swaggerJsdoc.Options = {
     servers: [{ url: '/', description: 'Certificate Service root' }],
     components: {
       securitySchemes: {
-        BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      },
+      schemas: {
+        CertificateData: {
+          type: 'object',
+          properties: {
+            workerName: { type: 'string' },
+            periodStart: { type: 'string', format: 'date' },
+            periodEnd: { type: 'string', format: 'date' },
+            issuedAt: { type: 'string', format: 'date' },
+            currency: { type: 'string', example: 'PKR' },
+            platformBreakdown: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  platform: { type: 'string' },
+                  shifts: { type: 'integer' },
+                  hours: { type: 'string' },
+                  gross: { type: 'string' },
+                  deductions: { type: 'string' },
+                  net: { type: 'string' },
+                },
+              },
+            },
+            monthlyBreakdown: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  month: { type: 'string', example: '2026-03' },
+                  shifts: { type: 'integer' },
+                  hours: { type: 'string' },
+                  net: { type: 'string' },
+                },
+              },
+            },
+            totals: {
+              type: 'object',
+              properties: {
+                shifts: { type: 'integer' },
+                hours: { type: 'string' },
+                gross: { type: 'string' },
+                deductions: { type: 'string' },
+                net: { type: 'string' },
+              },
+            },
+            avgHourlyRate: { type: 'string' },
+            verificationPct: { type: 'number' },
+            shareToken: { type: 'string', nullable: true },
+            shareUrl: { type: 'string', nullable: true },
+          },
+        },
       },
     },
   },

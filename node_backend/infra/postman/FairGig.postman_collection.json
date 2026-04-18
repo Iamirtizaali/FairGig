@@ -12,7 +12,10 @@
     { "key": "baseUrl_grievance",   "value": "http://localhost:3004" },
     { "key": "accessToken",         "value": "" },
     { "key": "shiftId",             "value": "" },
-    { "key": "importId",            "value": "" }
+    { "key": "importId",            "value": "" },
+    { "key": "shareToken",          "value": "" },
+    { "key": "complaintId",         "value": "" },
+    { "key": "clusterId",           "value": "" }
   ],
   "item": [
     {
@@ -299,11 +302,185 @@
     },
     {
       "name": "Certificate /v1",
-      "item": []
+      "item": [
+        {
+          "name": "Certificate — Build (Preview)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl_certificate}}/certificate/v1/build?from=2026-01-01&to=2026-03-31",
+              "host": ["{{baseUrl_certificate}}"], "path": ["certificate","v1","build"],
+              "query": [{"key":"from","value":"2026-01-01"},{"key":"to","value":"2026-03-31"}]
+            }
+          }
+        },
+        {
+          "name": "Certificate — Share (Create Link)",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.shareToken)pm.collectionVariables.set('shareToken',j.data.shareToken);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"from\": \"2026-01-01\",\n  \"to\": \"2026-03-31\",\n  \"ttlDays\": 14\n}" },
+            "url": { "raw": "{{baseUrl_certificate}}/certificate/v1/share", "host": ["{{baseUrl_certificate}}"], "path": ["certificate","v1","share"] }
+          }
+        },
+        {
+          "name": "Certificate — Public View (JSON)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "application/json" }],
+            "url": { "raw": "{{baseUrl_certificate}}/certificate/v1/public/{{shareToken}}", "host": ["{{baseUrl_certificate}}"], "path": ["certificate","v1","public","{{shareToken}}"] }
+          }
+        },
+        {
+          "name": "Certificate — Public View (Print HTML)",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Accept", "value": "text/html" }],
+            "url": { "raw": "{{baseUrl_certificate}}/certificate/v1/public/{{shareToken}}", "host": ["{{baseUrl_certificate}}"], "path": ["certificate","v1","public","{{shareToken}}"] }
+          }
+        },
+        {
+          "name": "Certificate — Revoke",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_certificate}}/certificate/v1/{{shareToken}}/revoke", "host": ["{{baseUrl_certificate}}"], "path": ["certificate","v1","{{shareToken}}","revoke"] }
+          }
+        }
+      ]
     },
     {
       "name": "Grievance /v1",
-      "item": []
+      "item": [
+        {
+          "name": "Board — Public Bulletin",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl_grievance}}/grievance/v1/board?page=1&limit=20",
+              "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","board"],
+              "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}]
+            }
+          }
+        },
+        {
+          "name": "Complaints — Create",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.complaint?.id)pm.collectionVariables.set('complaintId',j.data.complaint.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"platform\": \"Careem\",\n  \"category\": \"commission_change\",\n  \"title\": \"Commission raised silently from 20% to 28%\",\n  \"description\": \"Without any notice, Careem increased platform commission from 20% to 28% this month. My effective earnings dropped by Rs. 3,200 per week.\",\n  \"visibility\": \"public_anon\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints"] }
+          }
+        },
+        {
+          "name": "Complaints — List",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl_grievance}}/grievance/v1/complaints?page=1&limit=20",
+              "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints"],
+              "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}]
+            }
+          }
+        },
+        {
+          "name": "Complaints — Get by ID",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints/{{complaintId}}", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints","{{complaintId}}"] }
+          }
+        },
+        {
+          "name": "Complaints — Update",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Updated title\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints/{{complaintId}}", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints","{{complaintId}}"] }
+          }
+        },
+        {
+          "name": "Complaints — Update Status (Advocate)",
+          "request": {
+            "method": "PATCH",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"status\": \"escalated\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints/{{complaintId}}/status", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints","{{complaintId}}","status"] }
+          }
+        },
+        {
+          "name": "Complaints — Add Tag",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"label\": \"commission-increase\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints/{{complaintId}}/tags", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints","{{complaintId}}","tags"] }
+          }
+        },
+        {
+          "name": "Complaints — Add Comment",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"body\": \"I experienced the same on Bykea last month.\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints/{{complaintId}}/comments", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints","{{complaintId}}","comments"] }
+          }
+        },
+        {
+          "name": "Complaints — Report",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"reason\": \"Contains personal information.\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/complaints/{{complaintId}}/report", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","complaints","{{complaintId}}","report"] }
+          }
+        },
+        {
+          "name": "Clusters — List",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/clusters?page=1&limit=20", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","clusters"], "query": [{"key":"page","value":"1"},{"key":"limit","value":"20"}] }
+          }
+        },
+        {
+          "name": "Clusters — Create",
+          "event": [{ "listen": "test", "script": { "exec": ["const j=pm.response.json();if(j.data?.cluster?.id)pm.collectionVariables.set('clusterId',j.data.cluster.id);"], "type": "text/javascript" } }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"title\": \"Careem Commission Spike Q1 2026\",\n  \"description\": \"Multiple workers reporting same commission increase.\"\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/clusters", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","clusters"] }
+          }
+        },
+        {
+          "name": "Clusters — Attach Complaints",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" },{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "body": { "mode": "raw", "raw": "{\n  \"complaintIds\": [\"{{complaintId}}\"]\n}" },
+            "url": { "raw": "{{baseUrl_grievance}}/grievance/v1/clusters/{{clusterId}}/attach", "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","clusters","{{clusterId}}","attach"] }
+          }
+        },
+        {
+          "name": "Clusters — Get Suggestions",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{accessToken}}" }],
+            "url": {
+              "raw": "{{baseUrl_grievance}}/grievance/v1/clusters/suggestions?seedId={{complaintId}}",
+              "host": ["{{baseUrl_grievance}}"], "path": ["grievance","v1","clusters","suggestions"],
+              "query": [{"key":"seedId","value":"{{complaintId}}"}]
+            }
+          }
+        }
+      ]
     }
   ]
 }

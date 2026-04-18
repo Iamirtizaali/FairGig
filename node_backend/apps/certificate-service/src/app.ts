@@ -6,6 +6,7 @@ import { httpLogger } from './middleware/httpLogger';
 import { defaultRateLimit } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { healthRouter } from './routes/health.routes';
+import { certificateRouter } from './routes/certificate.routes';
 import { setupSwagger } from './swagger';
 import { env } from './config/env';
 
@@ -43,7 +44,7 @@ export function buildApp(): Application {
 
   // ── Routes ─────────────────────────────────────────────────────────────────
   app.use('/health', healthRouter);
-  // Sprint 4: app.use('/certificate/v1', certificateRouter);
+  app.use('/certificate/v1', certificateRouter);
 
   // ── Error handler (must be last) ───────────────────────────────────────────
   app.use(errorHandler);

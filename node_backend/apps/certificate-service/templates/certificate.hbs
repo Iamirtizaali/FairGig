@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FairGig Income Certificate — {{workerName}}</title>
+  <style>
+    @media print {
+      body { margin: 0; }
+      .no-print { display: none !important; }
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Georgia', serif; color: #1a1a1a; background: #fff; padding: 40px; max-width: 800px; margin: 0 auto; }
+    .header { text-align: center; border-bottom: 3px double #2563eb; padding-bottom: 24px; margin-bottom: 32px; }
+    .header h1 { font-size: 28px; color: #2563eb; letter-spacing: 1px; }
+    .header .subtitle { font-size: 13px; color: #6b7280; margin-top: 6px; }
+    .issued-to { margin-bottom: 24px; }
+    .issued-to .label { font-size: 12px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; }
+    .issued-to .value { font-size: 20px; font-weight: bold; margin-top: 4px; }
+    .period { font-size: 14px; color: #374151; margin-bottom: 32px; }
+    .totals-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; font-size: 14px; }
+    .totals-table th { background: #f3f4f6; padding: 10px 14px; text-align: left; font-size: 12px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; }
+    .totals-table td { padding: 10px 14px; border-bottom: 1px solid #e5e7eb; }
+    .totals-table tr.total-row td { font-weight: bold; border-top: 2px solid #2563eb; background: #eff6ff; }
+    .monthly-section h3 { font-size: 14px; text-transform: uppercase; color: #6b7280; letter-spacing: 0.5px; margin-bottom: 12px; }
+    .monthly-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f3f4f6; font-size: 14px; }
+    .footer { margin-top: 40px; border-top: 1px solid #e5e7eb; padding-top: 20px; font-size: 12px; color: #6b7280; }
+    .footer .verification { font-style: italic; margin-bottom: 8px; }
+    .footer .qr-note { margin-top: 12px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FairGig Income Certificate</h1>
+    <div class="subtitle">Gig Worker Earnings Verification Platform</div>
+  </div>
+
+  <div class="issued-to">
+    <div class="label">Issued To</div>
+    <div class="value">{{workerName}}</div>
+  </div>
+
+  <div class="period">
+    Period: <strong>{{periodStart}}</strong> to <strong>{{periodEnd}}</strong> &nbsp;·&nbsp;
+    Issued: <strong>{{issuedAt}}</strong>
+  </div>
+
+  <table class="totals-table">
+    <thead>
+      <tr>
+        <th>Platform</th>
+        <th>Shifts</th>
+        <th>Hours</th>
+        <th>Gross Earned</th>
+        <th>Deductions</th>
+        <th>Net Received</th>
+      </tr>
+    </thead>
+    <tbody>
+      {{#each platformBreakdown}}
+      <tr>
+        <td>{{platform}}</td>
+        <td>{{shifts}}</td>
+        <td>{{hours}}</td>
+        <td>{{currency}} {{gross}}</td>
+        <td>{{currency}} {{deductions}}</td>
+        <td>{{currency}} {{net}}</td>
+      </tr>
+      {{/each}}
+      <tr class="total-row">
+        <td><strong>Total</strong></td>
+        <td>{{totals.shifts}}</td>
+        <td>{{totals.hours}}</td>
+        <td>{{currency}} {{totals.gross}}</td>
+        <td>{{currency}} {{totals.deductions}}</td>
+        <td>{{currency}} {{totals.net}}</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="monthly-section">
+    <h3>Monthly Breakdown</h3>
+    {{#each monthlyBreakdown}}
+    <div class="monthly-row">
+      <span>{{month}}</span>
+      <span>{{shifts}} shifts · {{hours}} hrs · <strong>{{../currency}} {{net}}</strong></span>
+    </div>
+    {{/each}}
+  </div>
+
+  <div class="footer">
+    <div class="verification">
+      This certificate represents earnings from shifts verified by FairGig volunteer verifiers.
+      Only shifts with status "Verified" are included in the totals.
+      Self-attested shifts are not included.
+    </div>
+    <div>Average hourly rate: <strong>{{currency}} {{avgHourlyRate}}/hr</strong></div>
+    <div>Verification rate: <strong>{{verificationPct}}%</strong> of logged shifts verified</div>
+    {{#if shareToken}}
+    <div class="qr-note">Verify this certificate at: {{shareUrl}}</div>
+    {{/if}}
+  </div>
+</body>
+</html>

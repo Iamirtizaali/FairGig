@@ -15,7 +15,34 @@ const options: swaggerJsdoc.Options = {
     servers: [{ url: '/', description: 'Grievance Service root' }],
     components: {
       securitySchemes: {
-        BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      },
+      schemas: {
+        Complaint: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            platform: { type: 'string' },
+            category: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string' },
+            visibility: { type: 'string', enum: ['public_anon', 'internal'] },
+            status: { type: 'string', enum: ['open', 'under_review', 'escalated', 'resolved', 'hidden'] },
+            clusterId: { type: 'string', nullable: true },
+            tags: { type: 'array', items: { type: 'object', properties: { id: { type: 'string' }, label: { type: 'string' } } } },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
+        Cluster: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            title: { type: 'string' },
+            description: { type: 'string', nullable: true },
+            createdBy: { type: 'string' },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
       },
     },
   },

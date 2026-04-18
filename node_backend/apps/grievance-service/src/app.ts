@@ -6,6 +6,9 @@ import { httpLogger } from './middleware/httpLogger';
 import { defaultRateLimit } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { healthRouter } from './routes/health.routes';
+import { complaintsRouter } from './routes/complaints.routes';
+import { clustersRouter } from './routes/clusters.routes';
+import { boardRouter } from './routes/board.routes';
 import { setupSwagger } from './swagger';
 import { env } from './config/env';
 
@@ -31,7 +34,9 @@ export function buildApp(): Application {
 
   // ── Routes ─────────────────────────────────────────────────────────────────
   app.use('/health', healthRouter);
-  // Sprint 4: app.use('/grievance/v1', complaintsRouter);
+  app.use('/grievance/v1/board', boardRouter);
+  app.use('/grievance/v1/complaints', complaintsRouter);
+  app.use('/grievance/v1/clusters', clustersRouter);
 
   // ── Error handler (must be last) ───────────────────────────────────────────
   app.use(errorHandler);

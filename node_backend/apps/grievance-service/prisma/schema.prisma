@@ -12,11 +12,134 @@ datasource db {
   schemas  = ["grievance", "audit"]
 }
 
-// ─── Models are added in Sprint 4 ────────────────────────────────────────────
-// Planned tables:
-//   grievance.complaints         — worker complaint records
-//   grievance.complaint_tags     — advocate-applied tags
-//   grievance.complaint_clusters — grouped complaint clusters
-//   grievance.comments           — threaded discussion on complaints
-//   grievance.reports            — abuse/content reports
-//   audit.events                 — append-only audit log
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum ComplaintStatus {
+  open
+  under_review
+  escalated
+  resolved
+  hidden
+
+  @@schema("grievance")
+}
+
+enum ComplaintVisibility {
+  public_anon
+  internal
+
+  @@schema("grievance")
+}
+
+// ─── Complaints ───────────────────────────────────────────────────────────────
+
+model Complaint {
+  id          String             @id @default(cuid())
+  authorId    String
+  platform    String
+  category    String
+  title       String
+  description String
+  visibility  ComplaintVisibility @default(public_anon)
+  status      ComplaintStatus    @default(open)
+  clusterId   String?
+  deletedAt   DateTime?
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  tags        ComplaintTag[]
+  comments    Comment[]
+  reports     Report[]
+  cluster     Cluster?           @relation(fields: [clusterId], references: [id])
+
+  @@index([authorId])
+  @@index([status])
+  @@index([platform])
+  @@index([clusterId])
+  @@map("complaints")
+  @@schema("grievance")
+}
+
+// ─── Tags ─────────────────────────────────────────────────────────────────────
+
+model ComplaintTag {
+  id          String    @id @default(cuid())
+  complaintId String
+  label       String
+  addedBy     String
+  createdAt   DateTime  @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+
+  @@index([complaintId])
+  @@map("complaint_tags")
+  @@schema("grievance")
+}
+
+// ─── Clusters ─────────────────────────────────────────────────────────────────
+
+model Cluster {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  createdBy   String
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  complaints  Complaint[]
+
+  @@map("complaint_clusters")
+  @@schema("grievance")
+}
+
+// ─── Comments ─────────────────────────────────────────────────────────────────
+
+model Comment {
+  id          String    @id @default(cuid())
+  complaintId String
+  authorId    String
+  body        String
+  deletedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+
+  @@index([complaintId])
+  @@map("comments")
+  @@schema("grievance")
+}
+
+// ─── Reports (abuse/content reports) ─────────────────────────────────────────
+
+model Report {
+  id          String    @id @default(cuid())
+  complaintId String
+  reporterId  String
+  reason      String
+  resolvedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  complaint   Complaint @relation(fields: [complaintId], references: [id])
+
+  @@index([complaintId])
+  @@map("reports")
+  @@schema("grievance")
+}
+
+// ─── Audit events (append-only) ───────────────────────────────────────────────
+
+model AuditEvent {
+  id        String   @id @default(cuid())
+  actorId   String?
+  actorRole String?
+  action    String
+  entity    String
+  entityId  String
+  diff      Json     @default("{}")
+  ip        String?
+  ua        String?
+  createdAt DateTime @default(now())
+
+  @@map("events")
+  @@schema("audit")
+}
