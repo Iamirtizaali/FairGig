@@ -14,6 +14,7 @@ import {
 import { sendPasswordResetEmail, sendRoleApprovedEmail } from './email.service';
 import { AppError, ConflictError, UnauthorizedError, NotFoundError, ForbiddenError } from '../utils/errors';
 import type { Request } from 'express';
+import { logger } from '../utils/logger';
 
 const BCRYPT_ROUNDS = 12;
 
@@ -155,7 +156,10 @@ export async function logout(rawToken: string, req?: Request) {
 
 export async function forgotPassword(email: string) {
   const user = await userRepository.findByEmail(email);
-  if (!user) return; // silent — never reveal whether email exists
+  if (!user) {
+    logger.info({ email }, 'Forgot-password requested for non-existent email');
+    return; // silent — never reveal whether email exists
+  }
 
   const rawToken = generateRefreshTokenValue();
   await passwordResetTokenRepository.create({
@@ -165,6 +169,7 @@ export async function forgotPassword(email: string) {
   });
 
   await sendPasswordResetEmail(user.email, rawToken);
+  logger.info({ userId: user.id, email: user.email }, 'Password reset email dispatched');
 }
 
 // ─── Reset password ──────────────────────────────────────────────────────────

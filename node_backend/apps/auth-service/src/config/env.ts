@@ -11,8 +11,9 @@ const envSchema = z.object({
   FRONTEND_ORIGINS: z.string().default('http://localhost:5173'),
   UPSTASH_REDIS_REST_URL: z.string().url().optional(),
   UPSTASH_REDIS_REST_TOKEN: z.string().min(1).optional(),
-  RESEND_API_KEY: z.string().optional(),
-  EMAIL_FROM: z.string().email().default('noreply@fairgig.app'),
+  GMAIL_USER: z.string().email().optional(),
+  GMAIL_APP_PASSWORD: z.string().min(1).optional(),
+  EMAIL_FROM: z.string().email().optional(),
   RESET_TOKEN_BASE_URL: z.string().default('http://localhost:5173'),
   LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error', 'fatal']).default('info'),
 });

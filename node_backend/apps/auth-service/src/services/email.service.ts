@@ -3,28 +3,30 @@ import { env } from '../config/env';
 import { logger } from '../utils/logger';
 
 let transporter: nodemailer.Transporter | null = null;
+let transportMode: 'gmail' | 'ethereal' | null = null;
 
 async function getTransporter(): Promise<nodemailer.Transporter> {
   if (transporter) return transporter;
 
-  if (env.NODE_ENV !== 'production' || !env.RESEND_API_KEY) {
+  if (env.GMAIL_USER && env.GMAIL_APP_PASSWORD) {
+    transportMode = 'gmail';
+    logger.info({ user: env.GMAIL_USER }, 'Using Gmail SMTP transport for outgoing email');
+    transporter = nodemailer.createTransport({
+      service: 'gmail',
+      auth: { user: env.GMAIL_USER, pass: env.GMAIL_APP_PASSWORD },
+    });
+  } else {
+    transportMode = 'ethereal';
     const testAccount = await nodemailer.createTestAccount();
     logger.info(
       { user: testAccount.user, preview: 'https://ethereal.email' },
-      'Using Ethereal test SMTP — check https://ethereal.email for delivered emails',
+      'Gmail credentials missing; using Ethereal test SMTP — check https://ethereal.email for delivered emails',
     );
     transporter = nodemailer.createTransport({
       host: 'smtp.ethereal.email',
       port: 587,
       secure: false,
       auth: { user: testAccount.user, pass: testAccount.pass },
-    });
-  } else {
-    transporter = nodemailer.createTransport({
-      host: 'smtp.resend.com',
-      port: 587,
-      secure: false,
-      auth: { user: 'resend', pass: env.RESEND_API_KEY },
     });
   }
 
@@ -34,9 +36,10 @@ async function getTransporter(): Promise<nodemailer.Transporter> {
 export async function sendPasswordResetEmail(to: string, resetToken: string): Promise<void> {
   const resetUrl = `${env.RESET_TOKEN_BASE_URL}/auth/reset/${resetToken}`;
   const t = await getTransporter();
+  const fromAddress = env.EMAIL_FROM ?? env.GMAIL_USER ?? 'noreply@fairgig.app';
 
   const info = await t.sendMail({
-    from: `"FairGig" <${env.EMAIL_FROM}>`,
+    from: `"FairGig" <${fromAddress}>`,
     to,
     subject: 'Reset your FairGig password',
     text: [
@@ -54,15 +57,18 @@ export async function sendPasswordResetEmail(to: string, resetToken: string): Pr
     `,
   });
 
-  if (env.NODE_ENV !== 'production') {
+  if (transportMode === 'ethereal') {
     logger.info({ previewUrl: nodemailer.getTestMessageUrl(info) }, 'Password reset email (Ethereal preview)');
+  } else {
+    logger.info({ messageId: info.messageId, to }, 'Password reset email sent via Gmail SMTP');
   }
 }
 
 export async function sendRoleApprovedEmail(to: string, newRole: string): Promise<void> {
   const t = await getTransporter();
+  const fromAddress = env.EMAIL_FROM ?? env.GMAIL_USER ?? 'noreply@fairgig.app';
   await t.sendMail({
-    from: `"FairGig" <${env.EMAIL_FROM}>`,
+    from: `"FairGig" <${fromAddress}>`,
     to,
     subject: `Your FairGig role has been upgraded to ${newRole}`,
     text: `Your account role has been upgraded to "${newRole}". Please log in again to access your new dashboard.`,
