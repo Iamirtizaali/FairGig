@@ -1,0 +1,22 @@
+// Grievance Service — Prisma Schema
+// Schemas owned: grievance, audit
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["grievance", "audit"]
+}
+
+// ─── Models are added in Sprint 4 ────────────────────────────────────────────
+// Planned tables:
+//   grievance.complaints         — worker complaint records
+//   grievance.complaint_tags     — advocate-applied tags
+//   grievance.complaint_clusters — grouped complaint clusters
+//   grievance.comments           — threaded discussion on complaints
+//   grievance.reports            — abuse/content reports
+//   audit.events                 — append-only audit log

@@ -1,0 +1,21 @@
+// Certificate Service — Prisma Schema
+// Schemas accessed: earnings (read + write certificates table), audit
+
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["earnings", "audit"]
+}
+
+// ─── Models are added in Sprint 4 ────────────────────────────────────────────
+// Planned tables (all in earnings schema, managed by this service):
+//   earnings.certificates — certificate records with signed share tokens
+//                           (id, worker_id, from_date, to_date, signed_share_id, …)
+// Read-only access:
+//   earnings.shifts        — reads only VERIFIED shifts for the certificate
+//   earnings.platforms     — platform names for the certificate breakdown

@@ -1,0 +1,29 @@
+{
+  "name": "fairgig-node-backend",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev:auth": "pnpm --filter auth-service dev",
+    "dev:earnings": "pnpm --filter earnings-service dev",
+    "dev:certificate": "pnpm --filter certificate-service dev",
+    "dev:grievance": "pnpm --filter grievance-service dev",
+    "dev": "concurrently -n auth,earnings,cert,grievance -c blue,green,yellow,magenta \"pnpm dev:auth\" \"pnpm dev:earnings\" \"pnpm dev:certificate\" \"pnpm dev:grievance\"",
+    "build": "pnpm -r build",
+    "lint": "pnpm -r lint",
+    "test": "pnpm -r test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "bcrypt",
+      "esbuild",
+      "prisma",
+      "msgpackr-extract",
+      "@scarf/scarf"
+    ]
+  }
+}
