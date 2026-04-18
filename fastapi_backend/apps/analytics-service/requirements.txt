@@ -9,4 +9,5 @@ pytest
 pytest-asyncio
 sqlalchemy[asyncio]
 asyncpg
+aiosqlite
 pandas
