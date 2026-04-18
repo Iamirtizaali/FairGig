@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate, useParams } from 'react-router'
+import { Link, useParams } from 'react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Eye, EyeOff, Loader2, CheckCircle, AlertCircle, ArrowLeft, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,7 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { staggerContainer, fadeUp, scaleIn } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { font } from '@/lib/fonts'
+import { useResetPasswordMutation, extractApiMessage } from '@/features/auth/api'
 
 function getPasswordStrength(password: string) {
   let score = 0
@@ -22,16 +23,15 @@ function getPasswordStrength(password: string) {
 }
 
 export default function ResetPasswordPage() {
-  const { token: _token } = useParams<{ token: string }>()
-  const navigate = useNavigate()
+  const { token } = useParams<{ token: string }>()
+  const resetMutation = useResetPasswordMutation()
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  // Simulate an expired token scenario — set to true to test
-  const isExpired = false
+  const [isExpired, setIsExpired] = useState(false)
   const [form, setForm] = useState({ password: '', confirmPassword: '' })
 
+  const isLoading = resetMutation.isPending
   const passwordStrength = getPasswordStrength(form.password)
 
   async function handleSubmit(e: React.FormEvent) {
@@ -39,13 +39,23 @@ export default function ResetPasswordPage() {
     if (!form.password) { setError('Please enter a new password.'); return }
     if (form.password !== form.confirmPassword) { setError('Passwords do not match.'); return }
     if (passwordStrength.score < 2) { setError('Please choose a stronger password.'); return }
-    setIsLoading(true)
     setError(null)
-    // TODO: call reset-password API with token
-    await new Promise((r) => setTimeout(r, 1400))
-    setIsLoading(false)
-    setSuccess(true)
-    setTimeout(() => navigate('/auth/sign-in'), 3000)
+    // Backend expects: { token: string, password: string }
+    resetMutation.mutate(
+      { token: token!, password: form.password },
+      {
+        onSuccess: () => setSuccess(true),
+        onError: (err) => {
+          const msg = extractApiMessage(err)
+          // 400 INVALID_RESET_TOKEN = link is expired/used
+          if (msg.toLowerCase().includes('invalid') || msg.toLowerCase().includes('expired')) {
+            setIsExpired(true)
+          } else {
+            setError(msg)
+          }
+        },
+      },
+    )
   }
 
   return (

@@ -20,8 +20,6 @@ export function WorkerLayout() {
       role="worker"
       navItems={WORKER_NAV_ITEMS}
       breadcrumb="Worker Portal"
-      userName="Ahad (Worker)"
-      userInitials="AW"
     >
       <Outlet />
     </DashboardLayout>

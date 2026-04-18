@@ -9,13 +9,16 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { staggerContainer, fadeUp, scaleIn } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { font } from '@/lib/fonts'
+import { useForgotPasswordMutation, extractApiMessage } from '@/features/auth/api'
 
 export default function ForgotPasswordPage() {
+  const forgotMutation = useForgotPasswordMutation()
   const [email, setEmail] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [sent, setSent] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [resendCooldown, setResendCooldown] = useState(0)
+
+  const isLoading = forgotMutation.isPending
 
   // Countdown timer for resend
   useEffect(() => {
@@ -27,21 +30,23 @@ export default function ForgotPasswordPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email) { setError('Please enter your email address.'); return }
-    setIsLoading(true)
     setError(null)
-    // TODO: call forgot-password API
-    await new Promise((r) => setTimeout(r, 1400))
-    setIsLoading(false)
-    setSent(true)
-    setResendCooldown(45)
+    // Backend always returns 200 regardless of whether the email exists (security)
+    forgotMutation.mutate(
+      { email },
+      {
+        onSuccess: () => { setSent(true); setResendCooldown(45) },
+        onError: (err) => setError(extractApiMessage(err)),
+      },
+    )
   }
 
   async function handleResend() {
     if (resendCooldown > 0) return
-    setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 1000))
-    setIsLoading(false)
-    setResendCooldown(45)
+    forgotMutation.mutate(
+      { email },
+      { onSuccess: () => setResendCooldown(45) },
+    )
   }
 
   return (

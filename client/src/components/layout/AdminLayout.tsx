@@ -16,8 +16,6 @@ export function AdminLayout() {
       role="admin"
       navItems={ADMIN_NAV_ITEMS}
       breadcrumb="Admin Control Center"
-      userName="Super Admin"
-      userInitials="SA"
     >
       <Outlet />
     </DashboardLayout>

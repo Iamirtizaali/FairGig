@@ -1,30 +1,16 @@
-import type { ReactNode } from 'react'
-import { Link } from 'react-router'
 import { Bell, Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { Avatar, AvatarFallback } from '@/components/ui/avatar'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { cn } from '@/lib/utils'
+import { UserNav } from '@/components/auth/UserNav'
 import { font } from '@/lib/fonts'
 
 interface TopbarProps {
   breadcrumb?: string
-  userName?: string
-  userInitials?: string
   notificationCount?: number
   onMenuOpen: () => void
 }
 
 export function Topbar({
   breadcrumb,
-  userName,
-  userInitials,
   notificationCount = 0,
   onMenuOpen,
 }: TopbarProps) {
@@ -48,8 +34,8 @@ export function Topbar({
         )}
       </div>
 
-      {/* Right: bell + avatar */}
-      <div className="flex items-center gap-3">
+      {/* Right: bell + user dropdown */}
+      <div className="flex items-center gap-2">
         {/* Notification bell */}
         <Button
           variant="ghost"
@@ -65,33 +51,8 @@ export function Topbar({
           )}
         </Button>
 
-        {/* Avatar dropdown */}
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" className="rounded-full hover:bg-white/5">
-              <Avatar className="w-8 h-8">
-                <AvatarFallback className="bg-[#00D4FF]/20 text-[#00D4FF] text-xs font-bold">
-                  {userInitials ?? 'U'}
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent
-            align="end"
-            className="bg-[#1B1F2C] border-[#1E293B] text-[#F1F5F9] min-w-44"
-          >
-            <div className="px-3 py-2">
-              <p className="text-sm font-medium text-white">{userName ?? 'User'}</p>
-            </div>
-            <DropdownMenuSeparator className="bg-[#1E293B]" />
-            <DropdownMenuItem asChild className="hover:bg-white/5 focus:bg-white/5 cursor-pointer">
-              <Link to="/worker/settings">Settings</Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild className="hover:bg-white/5 focus:bg-white/5 cursor-pointer text-[#F87171]">
-              <Link to="/auth/sign-in">Sign out</Link>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        {/* Real auth-aware user dropdown */}
+        <UserNav />
       </div>
     </header>
   )

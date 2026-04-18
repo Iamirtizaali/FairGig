@@ -14,8 +14,6 @@ export function VerifierLayout() {
       role="verifier"
       navItems={VERIFIER_NAV_ITEMS}
       breadcrumb="Verifier Station"
-      userName="Zain (Verifier)"
-      userInitials="ZV"
     >
       <Outlet />
     </DashboardLayout>

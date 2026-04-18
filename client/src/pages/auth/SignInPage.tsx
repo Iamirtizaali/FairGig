@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, Loader2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -10,13 +10,15 @@ import { AuthLayout } from '@/components/layout/AuthLayout'
 import { staggerContainer, fadeUp } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 import { font } from '@/lib/fonts'
+import { useLoginMutation, extractApiMessage } from '@/features/auth/api'
 
 export default function SignInPage() {
-  const navigate = useNavigate()
+  const loginMutation = useLoginMutation()
   const [showPassword, setShowPassword] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [form, setForm] = useState({ email: '', password: '', rememberMe: false })
+
+  const isLoading = loginMutation.isPending
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }))
@@ -29,13 +31,11 @@ export default function SignInPage() {
       setError('Please fill in all fields.')
       return
     }
-    setIsLoading(true)
     setError(null)
-    // TODO: connect to auth API
-    await new Promise((r) => setTimeout(r, 1400))
-    setIsLoading(false)
-    // Simulate success redirect
-    navigate('/worker/dashboard')
+    loginMutation.mutate(
+      { email: form.email, password: form.password },
+      { onError: (err) => setError(extractApiMessage(err)) },
+    )
   }
 
   return (

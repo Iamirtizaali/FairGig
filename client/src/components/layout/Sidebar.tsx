@@ -1,26 +1,24 @@
-import type { ReactNode } from 'react'
 import { Link, useLocation } from 'react-router'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ShieldCheck, X, Menu } from 'lucide-react'
-import { useState } from 'react'
+import { motion } from 'framer-motion'
+import { ShieldCheck } from 'lucide-react'
+import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { SidebarUserFooter } from '@/components/auth/UserNav'
 import { cn } from '@/lib/utils'
 import { font } from '@/lib/fonts'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
-import type { NavItem } from './DashboardLayout'
+import type { NavItem } from '@/components/layout/DashboardLayout'
 
 interface SidebarProps {
   navItems: NavItem[]
   role: string
   roleColor: string
-  userName?: string
-  userInitials?: string
   mobileOpen: boolean
   onMobileClose: () => void
 }
 
 function NavLink({ item, onClose }: { item: NavItem; onClose?: () => void }) {
   const location = useLocation()
-  const isActive = location.pathname === item.href ||
+  const isActive =
+    location.pathname === item.href ||
     (item.activeMatch && location.pathname.startsWith(item.activeMatch))
 
   return (
@@ -46,8 +44,6 @@ function SidebarContent({
   navItems,
   role,
   roleColor,
-  userName,
-  userInitials,
   onClose,
 }: Omit<SidebarProps, 'mobileOpen' | 'onMobileClose'> & { onClose?: () => void }) {
   return (
@@ -77,25 +73,8 @@ function SidebarContent({
         ))}
       </nav>
 
-      {/* User bottom */}
-      {(userName || userInitials) && (
-        <div className="mt-6 px-5 pt-5 border-t border-[#1E293B]">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-[#1B1F2C] border border-[#1E293B] flex items-center justify-center text-xs font-bold text-[#00D4FF]">
-              {userInitials ?? '?'}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">{userName ?? 'User'}</p>
-              <Link
-                to="/auth/sign-in"
-                className="text-xs text-[#94A3B8] hover:text-[#F87171] transition-colors"
-              >
-                Sign out
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* User footer — real auth store, sign-out, edit profile */}
+      <SidebarUserFooter onNavigate={onClose} />
     </div>
   )
 }
@@ -104,8 +83,6 @@ export function Sidebar({
   navItems,
   role,
   roleColor,
-  userName,
-  userInitials,
   mobileOpen,
   onMobileClose,
 }: SidebarProps) {
@@ -118,13 +95,7 @@ export function Sidebar({
         transition={{ type: 'spring', stiffness: 300, damping: 30 }}
         className="hidden lg:flex flex-col w-60 shrink-0 bg-[#111827] border-r border-[#1E293B] fixed left-0 top-0 bottom-0 z-30"
       >
-        <SidebarContent
-          navItems={navItems}
-          role={role}
-          roleColor={roleColor}
-          userName={userName}
-          userInitials={userInitials}
-        />
+        <SidebarContent navItems={navItems} role={role} roleColor={roleColor} />
       </motion.aside>
 
       {/* Mobile sheet */}
@@ -137,8 +108,6 @@ export function Sidebar({
             navItems={navItems}
             role={role}
             roleColor={roleColor}
-            userName={userName}
-            userInitials={userInitials}
             onClose={onMobileClose}
           />
         </SheetContent>

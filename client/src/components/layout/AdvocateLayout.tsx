@@ -16,8 +16,6 @@ export function AdvocateLayout() {
       role="advocate"
       navItems={ADVOCATE_NAV_ITEMS}
       breadcrumb="Advocate Console"
-      userName="Ahmed (Advocate)"
-      userInitials="AA"
     >
       <Outlet />
     </DashboardLayout>

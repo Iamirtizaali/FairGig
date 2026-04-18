@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router'
+import { Link } from 'react-router'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
   Eye, EyeOff, Loader2, Check, ChevronRight, ChevronLeft,
@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { font } from '@/lib/fonts'
 import type { AuthStep } from '@/types/auth'
 import { GIG_CATEGORIES, GIG_PLATFORMS, PAKISTAN_CITIES } from '@/types/auth'
+import { useRegisterMutation, extractApiMessage } from '@/features/auth/api'
 
 // ─── Category icon map ────────────────────────────────────────────────────────
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -83,15 +84,16 @@ function StepIndicator({ currentStep }: { currentStep: AuthStep }) {
 
 // ─── Main component ───────────────────────────────────────────────────────────
 export default function SignUpPage() {
-  const navigate = useNavigate()
+  const registerMutation = useRegisterMutation()
   const [step, setStep] = useState<AuthStep>(1)
-  const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
   const [form, setForm] = useState({
     fullName: '', email: '', phone: '', password: '', confirmPassword: '',
     categories: [] as string[], city: '', zone: '', platforms: [] as string[],
   })
 
+  const isLoading = registerMutation.isPending
   const passwordStrength = getPasswordStrength(form.password)
 
   function updateField(field: string, value: string) {
@@ -109,10 +111,20 @@ export default function SignUpPage() {
   function back() { if (step > 1) setStep((s) => (s - 1) as AuthStep) }
 
   async function submit() {
-    setIsLoading(true)
-    await new Promise((r) => setTimeout(r, 1500))
-    setIsLoading(false)
-    next()
+    setSubmitError(null)
+    // Map form to RegisterRequest — backend accepts: name, email, password, phone (optional)
+    registerMutation.mutate(
+      {
+        name: form.fullName,
+        email: form.email,
+        password: form.password,
+        phone: form.phone || undefined,
+      },
+      {
+        onSuccess: () => next(),   // advance to the success step on 201
+        onError: (err) => setSubmitError(extractApiMessage(err)),
+      },
+    )
   }
 
   return (
@@ -164,7 +176,7 @@ export default function SignUpPage() {
                   <Input
                     id="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Min 8 characters"
+                    placeholder="Min 10 chars, include a number"
                     value={form.password}
                     onChange={(e) => updateField('password', e.target.value)}
                     className="bg-[#0F172A] border-0 border-b-2 border-[#1E293B] rounded-lg text-white placeholder:text-[#475569] pr-10 focus-visible:ring-0 focus-visible:border-b-[#00D4FF] transition-colors"
@@ -221,7 +233,7 @@ export default function SignUpPage() {
                 className="rounded-xl p-4 bg-[#F59E0B]/10 border border-[#F59E0B]/30"
               >
                 <p className="text-xs text-[#F59E0B]">
-                  🔵 Starting as a <strong>Worker</strong> — you can request Verifier or Advocate status later from settings.
+                  Starting as a <strong>Worker</strong> — you can request Verifier or Advocate status later from settings.
                 </p>
               </motion.div>
             </motion.div>
@@ -319,6 +331,13 @@ export default function SignUpPage() {
               </div>
             </div>
 
+            {/* Registration error banner */}
+            {submitError && (
+              <div className="flex items-center gap-3 rounded-xl p-3 bg-[#F87171]/10 border border-[#F87171]/30 text-[#F87171] text-sm">
+                <span>{submitError}</span>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -388,7 +407,7 @@ export default function SignUpPage() {
                   { label: 'Name', value: form.fullName },
                   { label: 'Role', value: 'Worker' },
                   { label: 'City', value: form.city || '—' },
-                  { label: 'Categories', value: GIG_CATEGORIES.filter((c) => form.categories.includes(c.id)).map((c) => c.icon + ' ' + c.label).join(', ') || '—' },
+                  { label: 'Categories', value: GIG_CATEGORIES.filter((c) => form.categories.includes(c.id)).map((c) => c.label).join(', ') || '—' },
                 ].map((row) => (
                   <div key={row.label} className="flex justify-between items-start gap-4">
                     <span className="text-[#475569] shrink-0">{row.label}</span>
@@ -405,7 +424,7 @@ export default function SignUpPage() {
               className="w-full"
             >
               <Button
-                onClick={() => navigate('/worker/dashboard')}
+                onClick={() => (window.location.href = '/worker/dashboard')}
                 className="w-full bg-[#00D4FF] text-[#0A0E1A] font-bold py-5 hover:bg-[#00D4FF]/90 shadow-[0_0_20px_rgba(0,212,255,0.3)]"
               >
                 Go to my Dashboard →

@@ -1,4 +1,117 @@
+// ─── Backend-Aligned Types ────────────────────────────────────────────────────
+// These match auth-service/src/services/auth.service.ts `sanitizeUser()` output
+// and auth-service/src/validators/auth.schema.ts
+
+export type UserRole = 'worker' | 'verifier' | 'advocate' | 'admin'
+export type UserStatus = 'active' | 'frozen' | 'deleted'
+export type UserLanguage = 'en' | 'ur'
+
+/** The sanitized user object returned by the backend */
+export interface AuthUser {
+  id: string
+  email: string
+  name: string
+  role: UserRole
+  language: UserLanguage
+  status: UserStatus
+  phone: string | null
+  cityZoneId: string | null
+  categories: string[]
+  createdAt: string  // ISO date string
+}
+
+// ─── Request Payloads ─────────────────────────────────────────────────────────
+// Match auth-service/src/validators/auth.schema.ts
+
+/** POST /auth/v1/register */
+export interface RegisterRequest {
+  name: string       // min 2, max 100
+  email: string      // valid email — lowercased by backend
+  password: string   // min 10 chars, must contain letter + number
+  phone?: string     // optional, +?[0-9]{7,15}
+}
+
+/** POST /auth/v1/login */
+export interface LoginRequest {
+  email: string
+  password: string
+}
+
+/** POST /auth/v1/forgot-password */
+export interface ForgotPasswordRequest {
+  email: string
+}
+
+/** POST /auth/v1/reset-password */
+export interface ResetPasswordRequest {
+  token: string      // UUID from the reset email URL
+  password: string   // same rules as register password (backend field: `password`)
+}
+
+/** POST /auth/v1/change-password */
+export interface ChangePasswordRequest {
+  oldPassword: string
+  newPassword: string
+}
+
+/** PATCH /auth/v1/me */
+export interface UpdateMeRequest {
+  name?: string
+  language?: UserLanguage
+  categories?: string[]
+  cityZoneId?: string   // UUID
+  phone?: string
+}
+
+/** POST /auth/v1/role-requests */
+export interface RoleRequestRequest {
+  requestedRole: 'verifier' | 'advocate'
+  reason?: string   // optional, max 500 chars
+}
+
+/** PATCH /auth/v1/admin/users/:id/status */
+export interface UpdateUserStatusRequest {
+  status: 'active' | 'frozen'
+}
+
+// ─── Response Payloads ────────────────────────────────────────────────────────
+// Match auth-service/src/controllers/auth.controller.ts sendSuccess/sendCreated calls
+
+/** Data payload for POST /auth/v1/register and POST /auth/v1/login */
+export interface AuthResponseData {
+  user: AuthUser
+  accessToken: string
+}
+
+/** Data payload for POST /auth/v1/refresh */
+export interface RefreshResponseData {
+  accessToken: string
+}
+
+/** Data payload for GET /auth/v1/me and PATCH /auth/v1/me */
+export interface MeResponseData {
+  user: AuthUser
+}
+
+/** Data payload for POST /auth/v1/role-requests (create) */
+export interface RoleRequestResponseData {
+  roleRequest: {
+    id: string
+    userId: string
+    requestedRole: 'verifier' | 'advocate'
+    status: 'pending' | 'approved' | 'rejected'
+    reason: string | null
+    createdAt: string
+  }
+}
+
+/** Data payload for GET /auth/v1/role-requests (admin list) */
+export interface RoleRequestsListData {
+  requests: RoleRequestResponseData['roleRequest'][]
+}
+
 // ─── Auth Form Types ──────────────────────────────────────────────────────────
+
 
 export interface SignInFormData {
   email: string
