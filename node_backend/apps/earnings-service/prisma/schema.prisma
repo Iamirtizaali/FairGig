@@ -40,6 +40,16 @@ enum ImportStatus {
   @@schema("earnings")
 }
 
+enum ShiftVerificationStatus {
+  self_attested
+  pending_review
+  verified
+  discrepancy_flagged
+  unverifiable
+
+  @@schema("earnings")
+}
+
 // ─── Platform catalogue ───────────────────────────────────────────────────────
 
 model Platform {
@@ -87,9 +97,10 @@ model Shift {
   deductions     Decimal      @default(0) @db.Decimal(12, 2)
   netPay         Decimal      @db.Decimal(12, 2)
   currency       String       @default("PKR") @db.Char(3)
-  source         ShiftSource  @default(manual)
-  notes          String?
-  deletedAt      DateTime?
+  source             ShiftSource             @default(manual)
+  verificationStatus ShiftVerificationStatus  @default(self_attested)
+  notes              String?
+  deletedAt          DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 

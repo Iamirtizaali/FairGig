@@ -1,10 +1,12 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
+import { validate } from '../middleware/validate';
+import { createShiftSchema, updateShiftSchema } from '../validators/shift.schema';
+import * as ctrl from '../controllers/shift.controller';
 
 export const shiftsRouter = Router();
 
-// All shifts routes require authentication
 shiftsRouter.use(authenticate);
 
 /**
@@ -12,7 +14,11 @@ shiftsRouter.use(authenticate);
  * /earnings/v1/shifts:
  *   get:
  *     tags: [Shifts]
- *     summary: List shifts for the authenticated worker
+ *     summary: List shifts (role-filtered)
+ *     description: |
+ *       - **worker**: own shifts only
+ *       - **verifier**: shifts with status `pending_review`
+ *       - **admin/advocate**: all shifts
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -21,25 +27,28 @@ shiftsRouter.use(authenticate);
  *         schema: { type: integer, default: 1 }
  *       - in: query
  *         name: limit
- *         schema: { type: integer, default: 20 }
+ *         schema: { type: integer, default: 20, maximum: 100 }
  *       - in: query
  *         name: platformId
  *         schema: { type: string }
  *       - in: query
  *         name: from
- *         schema: { type: string, format: date }
+ *         schema: { type: string, format: date, example: "2026-01-01" }
  *       - in: query
  *         name: to
- *         schema: { type: string, format: date }
+ *         schema: { type: string, format: date, example: "2026-04-30" }
+ *       - in: query
+ *         name: verificationStatus
+ *         schema:
+ *           type: string
+ *           enum: [self_attested, pending_review, verified, discrepancy_flagged, unverifiable]
  *     responses:
  *       200:
- *         description: Paginated list of shifts
+ *         description: Paginated shifts
  *       401:
  *         description: Not authenticated
  */
-shiftsRouter.get('/', (_req, res) => {
-  res.status(501).json({ data: null, meta: {}, error: { code: 'NOT_IMPLEMENTED', message: 'Coming in Sprint 2' } });
-});
+shiftsRouter.get('/', ctrl.listShifts);
 
 /**
  * @openapi
@@ -47,6 +56,9 @@ shiftsRouter.get('/', (_req, res) => {
  *   post:
  *     tags: [Shifts]
  *     summary: Create a new shift (manual entry)
+ *     description: |
+ *       Validates financial integrity: `net_pay` must equal `gross_pay − deductions`.
+ *       After creation, triggers anomaly detection asynchronously.
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -59,44 +71,51 @@ shiftsRouter.get('/', (_req, res) => {
  *             properties:
  *               platformId:
  *                 type: string
+ *                 example: clxyz123
  *               cityZoneId:
  *                 type: string
  *               shiftDate:
  *                 type: string
  *                 format: date
+ *                 example: "2026-04-18"
  *               hoursWorked:
  *                 type: number
  *                 minimum: 0.1
+ *                 maximum: 24
+ *                 example: 6.5
  *               grossPay:
  *                 type: number
  *                 minimum: 0
+ *                 example: 1200
  *               deductions:
  *                 type: number
  *                 minimum: 0
+ *                 default: 0
+ *                 example: 100
  *               netPay:
  *                 type: number
  *                 minimum: 0
+ *                 example: 1100
  *               currency:
  *                 type: string
  *                 default: PKR
  *               notes:
  *                 type: string
+ *                 maxLength: 500
  *     responses:
  *       201:
  *         description: Shift created
  *       422:
- *         description: Validation error
+ *         description: Validation error or financial integrity violation
  */
-shiftsRouter.post('/', (_req, res) => {
-  res.status(501).json({ data: null, meta: {}, error: { code: 'NOT_IMPLEMENTED', message: 'Coming in Sprint 2' } });
-});
+shiftsRouter.post('/', rbac('worker'), validate(createShiftSchema), ctrl.createShift);
 
 /**
  * @openapi
  * /earnings/v1/shifts/{id}:
  *   get:
  *     tags: [Shifts]
- *     summary: Get a single shift by ID
+ *     summary: Get a single shift with verification history and screenshot URL
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -106,20 +125,20 @@ shiftsRouter.post('/', (_req, res) => {
  *         schema: { type: string }
  *     responses:
  *       200:
- *         description: Shift record
+ *         description: Shift detail with screenshots, verifications, and anomaly flags
+ *       403:
+ *         description: Workers can only view their own shifts
  *       404:
- *         description: Not found
+ *         description: Shift not found
  */
-shiftsRouter.get('/:id', (_req, res) => {
-  res.status(501).json({ data: null, meta: {}, error: { code: 'NOT_IMPLEMENTED', message: 'Coming in Sprint 2' } });
-});
+shiftsRouter.get('/:id', ctrl.getShift);
 
 /**
  * @openapi
  * /earnings/v1/shifts/{id}:
  *   patch:
  *     tags: [Shifts]
- *     summary: Update a shift (worker owns the shift)
+ *     summary: Update a shift (owner only, not if verified)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -132,24 +151,29 @@ shiftsRouter.get('/:id', (_req, res) => {
  *         application/json:
  *           schema:
  *             type: object
+ *             properties:
+ *               shiftDate: { type: string, format: date }
+ *               hoursWorked: { type: number }
+ *               grossPay: { type: number }
+ *               deductions: { type: number }
+ *               netPay: { type: number }
+ *               notes: { type: string }
  *     responses:
  *       200:
  *         description: Updated shift
  *       403:
  *         description: Ownership violation
- *       404:
- *         description: Not found
+ *       409:
+ *         description: Shift is already verified
  */
-shiftsRouter.patch('/:id', (_req, res) => {
-  res.status(501).json({ data: null, meta: {}, error: { code: 'NOT_IMPLEMENTED', message: 'Coming in Sprint 2' } });
-});
+shiftsRouter.patch('/:id', validate(updateShiftSchema), ctrl.updateShift);
 
 /**
  * @openapi
  * /earnings/v1/shifts/{id}:
  *   delete:
  *     tags: [Shifts]
- *     summary: Soft-delete a shift (worker owns the shift)
+ *     summary: Soft-delete a shift (owner only)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -163,33 +187,4 @@ shiftsRouter.patch('/:id', (_req, res) => {
  *       403:
  *         description: Ownership violation
  */
-shiftsRouter.delete('/:id', (_req, res) => {
-  res.status(501).json({ data: null, meta: {}, error: { code: 'NOT_IMPLEMENTED', message: 'Coming in Sprint 2' } });
-});
-
-/**
- * @openapi
- * /earnings/v1/shifts/import/csv:
- *   post:
- *     tags: [Shifts]
- *     summary: Queue a CSV bulk import (BullMQ job)
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required: [storageKey]
- *             properties:
- *               storageKey:
- *                 type: string
- *                 description: Supabase storage key of the uploaded CSV
- *     responses:
- *       202:
- *         description: Import job queued
- */
-shiftsRouter.post('/import/csv', rbac('worker'), (_req, res) => {
-  res.status(501).json({ data: null, meta: {}, error: { code: 'NOT_IMPLEMENTED', message: 'Coming in Sprint 2' } });
-});
+shiftsRouter.delete('/:id', ctrl.deleteShift);

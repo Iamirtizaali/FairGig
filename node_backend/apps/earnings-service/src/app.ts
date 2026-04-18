@@ -6,6 +6,7 @@ import { httpLogger } from './middleware/httpLogger';
 import { defaultRateLimit } from './middleware/rateLimiter';
 import { errorHandler } from './middleware/errorHandler';
 import { healthRouter } from './routes/health.routes';
+import { platformsRouter } from './routes/platforms.routes';
 import { shiftsRouter } from './routes/shifts.routes';
 import { screenshotsRouter } from './routes/screenshots.routes';
 import { setupSwagger } from './swagger';
@@ -33,6 +34,7 @@ export function buildApp(): Application {
 
   // ── Routes ─────────────────────────────────────────────────────────────────
   app.use('/health', healthRouter);
+  app.use('/earnings/v1', platformsRouter);
   app.use('/earnings/v1/shifts', shiftsRouter);
   app.use('/earnings/v1', screenshotsRouter);
 

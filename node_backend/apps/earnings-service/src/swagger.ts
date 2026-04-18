@@ -16,7 +16,28 @@ const options: swaggerJsdoc.Options = {
     servers: [{ url: '/', description: 'Earnings Service root' }],
     components: {
       securitySchemes: {
-        BearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+        bearerAuth: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
+      },
+      schemas: {
+        Shift: {
+          type: 'object',
+          properties: {
+            id: { type: 'string' },
+            workerId: { type: 'string' },
+            platform: { type: 'object', properties: { id: { type: 'string' }, name: { type: 'string' }, slug: { type: 'string' } } },
+            cityZone: { type: 'object', nullable: true },
+            shiftDate: { type: 'string', format: 'date' },
+            hoursWorked: { type: 'string', example: '6.50' },
+            grossPay: { type: 'string', example: '1200.00' },
+            deductions: { type: 'string', example: '100.00' },
+            netPay: { type: 'string', example: '1100.00' },
+            currency: { type: 'string', example: 'PKR' },
+            source: { type: 'string', enum: ['manual', 'csv', 'ocr'] },
+            verificationStatus: { type: 'string', enum: ['self_attested', 'pending_review', 'verified', 'discrepancy_flagged', 'unverifiable'] },
+            notes: { type: 'string', nullable: true },
+            createdAt: { type: 'string', format: 'date-time' },
+          },
+        },
       },
     },
   },
