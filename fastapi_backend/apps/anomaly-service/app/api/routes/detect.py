@@ -1,28 +1,27 @@
 from fastapi import APIRouter, Depends
-from app.schemas.detect import DetectRequest
+from app.schemas.detect import DetectRequest, DetectResponse, Summary
 from app.api.deps import verify_jwt
-<<<<<<< HEAD
-from app.services.detector import detect_anomalies
-=======
-# from app.services.detector import detect_anomalies
->>>>>>> d9884f08b13838751b1573eb76b9d18855a76767
+from app.services import detector
 
 router = APIRouter()
 
-@router.post("/detect", summary="Detect Statistical Anomalies", response_model=dict)
+@router.post("/detect", response_model=DetectResponse, summary="Detect Statistical Anomalies")
 async def detect(payload: DetectRequest, user: dict = Depends(verify_jwt)):
-<<<<<<< HEAD
-    flags = detect_anomalies(payload)
-    return {
-        "worker_id": payload.worker_id,
-        "anomalies": flags,
-        "status": "issues_found" if flags else "clean"
-=======
-    # The prompt explicitly asks for a stub endpoint returning an empty anomalies array for Sprint 0.
-    # We leave the full implementation imported above for Sprint 1.
-    return {
-        "worker_id": payload.worker_id,
-        "anomalies": [],
-        "status": "clean"
->>>>>>> d9884f08b13838751b1573eb76b9d18855a76767
-    }
+    """
+    Detect anomalies in a worker's recent earnings.
+    
+    Statistical methods used:
+    - Z-score on deduction percentage versus 60-day rolling baseline
+    - Standard deviation drop on weekly hourly rate
+    - Month-over-month income drop above configurable threshold
+    """
+    anomalies = detector.detect(
+        shifts=payload.shifts,
+        z_threshold=payload.options.z_threshold,
+        mom_drop_pct=payload.options.mom_drop_pct,
+        currency=payload.currency
+    )
+    return DetectResponse(
+        summary=Summary(shifts_analysed=len(payload.shifts), windows=["weekly", "monthly"]),
+        anomalies=anomalies
+    )

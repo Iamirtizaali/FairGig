@@ -1,104 +1,130 @@
 import pytest
 import datetime
-from app.schemas.detect import DetectRequest, ShiftEntry
-from app.services.detector import detect_anomalies
+from hypothesis import given, strategies as st
+from fastapi.testclient import TestClient
+from app.main import app
+from app.config import settings
 
-def test_no_anomalies():
-    # 6 shifts of consistent earnings
+client = TestClient(app)
+
+def create_shift_payload(days: int, defect_day: int = -1, defect_type: str = ""):
     shifts = []
     base_date = datetime.date(2026, 1, 1)
-    for i in range(6):
-        shifts.append(ShiftEntry(
-            date=base_date + datetime.timedelta(days=i),
-            hours_worked=8.0,
-            gross_earned=1000.0,
-            platform_deductions=100.0, # 10%
-            net_received=900.0
-        ))
+    for i in range(days):
+        gross = 1000.0
+        deduction = 100.0
+        net = 900.0
+        hours = 8.0
+        
+        if i == defect_day:
+            if defect_type == "deduction":
+                deduction = 400.0
+                net = 600.0
+            elif defect_type == "income_drop":
+                gross = 500.0
+                deduction = 50.0
+                net = 450.0
+                
+        shifts.append({
+            "date": (base_date + datetime.timedelta(days=i)).isoformat(),
+            "platform": "Uber",
+            "hours_worked": hours,
+            "gross_earned": gross,
+            "platform_deductions": deduction,
+            "net_received": net
+        })
+    return shifts
+
+def test_happy_path_no_anomalies():
+    shifts = create_shift_payload(65)
+    payload = {
+        "worker_id": "W1",
+        "shifts": shifts,
+        "options": {"z_threshold": 2.5, "mom_drop_pct": 20.0}
+    }
     
-    payload = DetectRequest(worker_id="T1", shifts=shifts)
-    flags = detect_anomalies(payload)
-    assert len(flags) == 0
+    headers = {"X-API-Key": settings.JUDGE_API_KEY}
+    response = client.post("/detect", json=payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["anomalies"]) == 0
 
 def test_deduction_spike():
-    # 5 standard shifts, 1 high deduction shift
-    shifts = []
-    base_date = datetime.date(2026, 1, 1)
-    for i in range(5):
-        shifts.append(ShiftEntry(
-            date=base_date + datetime.timedelta(days=i),
-            hours_worked=8.0,
-            gross_earned=1000.0,
-            platform_deductions=100.0, # 10%
-            net_received=900.0
-        ))
-    # Spike on day 6: 40% deduction
-    shifts.append(ShiftEntry(
-        date=base_date + datetime.timedelta(days=5),
-        hours_worked=8.0,
-        gross_earned=1000.0,
-        platform_deductions=400.0,
-        net_received=600.0
-    ))
+    shifts = create_shift_payload(65, defect_day=63, defect_type="deduction")
+    payload = {
+        "worker_id": "W1", 
+        "shifts": shifts,
+        "options": {"z_threshold": 1.0, "mom_drop_pct": 20.0}
+    }
+    headers = {"X-API-Key": settings.JUDGE_API_KEY}
     
-    payload = DetectRequest(worker_id="T2", shifts=shifts)
-    flags = detect_anomalies(payload)
+    response = client.post("/detect", json=payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["anomalies"]) > 0
     
-    assert len(flags) > 0
-    assert any("deductions recently vs your usual" in f for f in flags)
+    kinds = [a["kind"] for a in data["anomalies"]]
+    assert "deduction_spike" in kinds
 
-def test_hourly_rate_drop():
-    # 5 normal shifts, 1 very low payout shift for same hours
-    shifts = []
-    base_date = datetime.date(2026, 1, 1)
-    for i in range(5):
-        shifts.append(ShiftEntry(
-            date=base_date + datetime.timedelta(days=i),
-            hours_worked=8.0,
-            gross_earned=1000.0,
-            platform_deductions=100.0,
-            net_received=900.0
-        ))
-    shifts.append(ShiftEntry(
-        date=base_date + datetime.timedelta(days=5),
-        hours_worked=8.0,
-        gross_earned=300.0,
-        platform_deductions=50.0,
-        net_received=250.0
-    ))
+def test_income_drop():
+    # Month 1 = normal, Month 2 = half normal
+    shifts1 = create_shift_payload(30)
+    shifts2 = create_shift_payload(30, defect_day=0, defect_type="")
+    # Manually drop the whole month's earnings
+    for s in shifts2:
+        s["gross_earned"] /= 2
+        s["platform_deductions"] /= 2
+        s["net_received"] /= 2
+        s["date"] = (datetime.date.fromisoformat(s["date"]) + datetime.timedelta(days=30)).isoformat()
     
-    payload = DetectRequest(worker_id="T3", shifts=shifts)
-    flags = detect_anomalies(payload)
+    payload = {"worker_id": "W1", "shifts": shifts1 + shifts2}
+    headers = {"X-API-Key": settings.JUDGE_API_KEY}
     
-    assert len(flags) > 0
-    assert any("effective hourly rate dropped" in f for f in flags)
+    response = client.post("/detect", json=payload, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    
+    has_mom_drop = False
+    for a in data["anomalies"]:
+        if a["kind"] == "income_drop_mom":
+            has_mom_drop = True
+            break
+    assert has_mom_drop
 
-def test_mom_income_drop():
-    # Month 1: 30 days of standard shifts
-    shifts = []
-    base_date = datetime.date(2026, 1, 1)
-    for i in range(30):
-        shifts.append(ShiftEntry(
-            date=base_date + datetime.timedelta(days=i),
-            hours_worked=8.0,
-            gross_earned=1000.0,
-            platform_deductions=100.0,
-            net_received=900.0
-        )) # Total Month 1 = 27000
-        
-    # Month 2: Income drops by 30%
-    month2_start = base_date + datetime.timedelta(days=30)
-    for i in range(30):
-        shifts.append(ShiftEntry(
-            date=month2_start + datetime.timedelta(days=i),
-            hours_worked=6.0,
-            gross_earned=600.0,
-            platform_deductions=60.0,
-            net_received=540.0
-        )) # Total Month 2 = 16200
-        
-    payload = DetectRequest(worker_id="T4", shifts=shifts)
-    flags = detect_anomalies(payload)
+def test_empty_input():
+    payload = {"worker_id": "W2", "shifts": []}
+    headers = {"X-API-Key": settings.JUDGE_API_KEY}
+    response = client.post("/detect", json=payload, headers=headers)
+    assert response.status_code == 200
+    assert len(response.json()["anomalies"]) == 0
+
+def test_malformed_input():
+    payload = {"worker_id": "W3", "shifts": [{"bad_field": 123}]}
+    headers = {"X-API-Key": settings.JUDGE_API_KEY}
+    response = client.post("/detect", json=payload, headers=headers)
+    assert response.status_code == 422 # Pydantic rejects
+
+# Hypothesis property-based testing
+from app.schemas.detect import Shift, DetectRequest
+from app.services.detector import detect
+
+@given(st.lists(
+    st.builds(
+        Shift,
+        date=st.dates(min_value=datetime.date(2025, 1, 1), max_value=datetime.date(2027, 1, 1)),
+        platform=st.just("Uber"),
+        hours_worked=st.floats(min_value=0.1, max_value=24.0),
+        gross_earned=st.floats(min_value=0.0, max_value=10000.0),
+        platform_deductions=st.floats(min_value=0.0, max_value=5000.0),
+        net_received=st.floats(min_value=-1000.0, max_value=10000.0)
+    ), max_size=100
+))
+def test_no_nan_values_in_any_response(shifts):
+    # Pass arbitrary generated shifts ensuring no NaN issues are surfaced mathematically
+    anomalies = detect(shifts)
     
-    assert len(flags) > 0
-    assert any("income dropped by" in f and "compared to the previous 30-day period" in f for f in flags)
+    for anomaly in anomalies:
+        assert str(anomaly.observed) != "nan"
+        assert str(anomaly.baseline_mean) != "nan"
+        assert str(anomaly.baseline_std) != "nan"
+        assert str(anomaly.z) != "nan"

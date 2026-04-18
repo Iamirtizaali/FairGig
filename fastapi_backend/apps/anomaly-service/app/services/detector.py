@@ -1,57 +1,125 @@
 import pandas as pd
 import numpy as np
-from scipy import stats
 from typing import List
-from app.schemas.detect import DetectRequest
+from ..schemas.detect import Shift, Anomaly, AnomalyKind, AnomalySeverity
+from ..core.explain import explain_deduction_spike, explain_hourly_rate_drop, explain_income_drop_mom
 
-def detect_anomalies(payload: DetectRequest) -> List[str]:
-    flags = []
-    if len(payload.shifts) < 2:
-        return flags
+def get_severity(z: float, base_threshold: float) -> AnomalySeverity:
+    abs_z = abs(z)
+    if abs_z >= base_threshold + 1.5:
+        return AnomalySeverity.high
+    elif abs_z >= base_threshold + 0.5:
+        return AnomalySeverity.medium
+    return AnomalySeverity.low
 
-    # Convert to DataFrame
-    df = pd.DataFrame([s.model_dump() for s in payload.shifts])
+def detect(shifts: List[Shift], z_threshold: float = 2.5, mom_drop_pct: float = 20.0, currency: str = "PKR") -> List[Anomaly]:
+    anomalies = []
+    if not shifts:
+        return anomalies
+
+    df = pd.DataFrame([s.model_dump() for s in shifts])
     df['date'] = pd.to_datetime(df['date'])
     df = df.sort_values('date').reset_index(drop=True)
     
-    # Pre-calculations
-    df['deduction_pct'] = np.where(df['gross_earned'] > 0, df['platform_deductions'] / df['gross_earned'], 0)
-    df['hourly_rate'] = np.where(df['hours_worked'] > 0, df['net_received'] / df['hours_worked'], 0)
-    
-    if len(df) > 5:
-        # 1. Deduction Spikes (Z-score vs baseline)
-        z_scores = stats.zscore(df['deduction_pct'])
-        recent_z = z_scores[-1]
-        
-        recent_pct = df['deduction_pct'].iloc[-1] * 100
-        mean_pct = df['deduction_pct'].mean() * 100
-        
-        if recent_z > 2.0:
-            flags.append(f"Your platform took {recent_pct:.1f}% in deductions recently vs your usual {mean_pct:.1f}%.")
-            
-        # 2. Hourly Rate Drops: 2 standard deviations below mean
-        rate_z_scores = stats.zscore(df['hourly_rate'])
-        recent_rate_z = rate_z_scores[-1]
-        
-        if recent_rate_z < -2.0:
-            recent_rate = df['hourly_rate'].iloc[-1]
-            mean_rate = df['hourly_rate'].mean()
-            flags.append(f"Your effective hourly rate dropped to PKR {recent_rate:.1f} (significantly below your mean of PKR {mean_rate:.1f}).")
-            
-    # 3. MoM Income Drop >= 20%
-    if len(df) > 1:
-        start_date = df['date'].min()
-        # Group by rolling 30-day index
-        df['30d_period'] = ((df['date'] - start_date).dt.days // 30)
-        
-        monthly_income = df.groupby('30d_period')['net_received'].sum().sort_index()
-        if len(monthly_income) >= 2:
-            last_month = monthly_income.iloc[-1]
-            prev_month = monthly_income.iloc[-2]
-            
-            if prev_month > 0:
-                drop_pct = ((prev_month - last_month) / prev_month) * 100
-                if drop_pct >= 20:
-                    flags.append(f"Your income dropped by {drop_pct:.1f}% this month compared to the previous 30-day period.")
+    # We must have enough data
+    if len(df) == 0:
+        return anomalies
 
-    return flags
+    # Daily aggregation (if there are multiple shifts per day) to make rolling windows cleaner
+    daily_df = df.groupby('date').agg({
+        'gross_earned': 'sum',
+        'platform_deductions': 'sum',
+        'net_received': 'sum',
+        'hours_worked': 'sum'
+    }).reset_index()
+
+    daily_df['deduction_pct'] = np.where(daily_df['gross_earned'] > 0, daily_df['platform_deductions'] / daily_df['gross_earned'], 0)
+    daily_df['hourly_rate'] = np.where(daily_df['hours_worked'] > 0, daily_df['net_received'] / daily_df['hours_worked'], 0)
+
+    # 60 day rolling
+    daily_df = daily_df.set_index('date')
+    
+    # Need to group by weekly frequencies to compare weekly means to 60-day trailing baseline
+    # First, let's establish 60-day trailing mean and std
+    rolling_60d = daily_df.rolling('60D', min_periods=5)
+    baseline_mean_deduction = rolling_60d['deduction_pct'].mean()
+    baseline_std_deduction = rolling_60d['deduction_pct'].std()
+    
+    baseline_mean_hourly = rolling_60d['hourly_rate'].mean()
+    baseline_std_hourly = rolling_60d['hourly_rate'].std()
+
+    daily_df['base_deduc_mean'] = baseline_mean_deduction
+    daily_df['base_deduc_std'] = baseline_std_deduction
+    daily_df['base_hourly_mean'] = baseline_mean_hourly
+    daily_df['base_hourly_std'] = baseline_std_hourly
+
+    # Now group by weekly
+    weekly_df = daily_df.resample('W').agg({
+        'deduction_pct': 'mean',
+        'hourly_rate': 'mean',
+        'base_deduc_mean': 'last',
+        'base_deduc_std': 'last',
+        'base_hourly_mean': 'last',
+        'base_hourly_std': 'last'
+    }).dropna()
+
+    for idx, row in weekly_df.iterrows():
+        # Deduction spike
+        deduc_std = max(row['base_deduc_std'], 0.01)
+        z_deduc = (row['deduction_pct'] - row['base_deduc_mean']) / deduc_std
+        if z_deduc > z_threshold:
+            anomalies.append(Anomaly(
+                kind=AnomalyKind.deduction_spike,
+                severity=get_severity(z_deduc, z_threshold),
+                window=f"Week ending {idx.date()}",
+                metric="deduction_pct",
+                observed=row['deduction_pct'],
+                baseline_mean=row['base_deduc_mean'],
+                baseline_std=deduc_std,
+                z=z_deduc,
+                explanation=explain_deduction_spike(row['deduction_pct'], row['base_deduc_mean'])
+            ))
+        
+        # Hourly rate drop
+        hr_std = max(row['base_hourly_std'], 1.0) # Rs 1 at least
+        z_hr = (row['hourly_rate'] - row['base_hourly_mean']) / hr_std
+        # We look for a drop, so standard deviations below
+        if z_hr < -z_threshold:
+            anomalies.append(Anomaly(
+                kind=AnomalyKind.hourly_rate_drop,
+                severity=get_severity(-z_hr, z_threshold),
+                window=f"Week ending {idx.date()}",
+                metric="hourly_rate",
+                observed=row['hourly_rate'],
+                baseline_mean=row['base_hourly_mean'],
+                baseline_std=hr_std,
+                z=z_hr,
+                explanation=explain_hourly_rate_drop(row['hourly_rate'], row['base_hourly_mean'], currency)
+            ))
+
+    # MOM Income Drop (30-day trailing windows)
+    if len(daily_df) >= 30: # Need at least a full month to even compare to something
+        last_date = daily_df.index[-1]
+        last_30d_start = last_date - pd.Timedelta(days=30)
+        prev_30d_start = last_30d_start - pd.Timedelta(days=30)
+
+        # exclusive indexing to strictly split 30-day blocks
+        last_month = daily_df.loc[(daily_df.index > last_30d_start) & (daily_df.index <= last_date), 'net_received'].sum()
+        prev_month = daily_df.loc[(daily_df.index > prev_30d_start) & (daily_df.index <= last_30d_start), 'net_received'].sum()
+        
+        if prev_month > 0:
+            drop_pct = ((prev_month - last_month) / prev_month) * 100
+            if drop_pct >= mom_drop_pct:
+                anomalies.append(Anomaly(
+                    kind=AnomalyKind.income_drop_mom,
+                    severity=AnomalySeverity.high if drop_pct > (mom_drop_pct + 20) else AnomalySeverity.medium,
+                    window=f"30 days ending {last_date.date()}",
+                    metric="net_received",
+                    observed=last_month,
+                    baseline_mean=prev_month,
+                    baseline_std=0.0,
+                    z=0.0, 
+                    explanation=explain_income_drop_mom(drop_pct / 100.0)
+                ))
+
+    return anomalies

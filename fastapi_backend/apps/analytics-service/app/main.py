@@ -1,9 +1,7 @@
 from fastapi import FastAPI
-from app.api.routes import kpis
-<<<<<<< HEAD
-from app.repositories.database import init_db
-=======
->>>>>>> d9884f08b13838751b1573eb76b9d18855a76767
+from sqlalchemy import text
+from app.api.routes import kpis, worker
+from app.repositories.database import init_db, engine
 
 app = FastAPI(
     title="FairGig Analytics Service",
@@ -11,13 +9,14 @@ app = FastAPI(
     version="1.0.0"
 )
 
-<<<<<<< HEAD
 @app.on_event("startup")
 async def on_startup():
     await init_db()
+    # Pinging database ensuring connection works natively per Sprint 1 instructions
+    async with engine.begin() as conn:
+        await conn.execute(text("SELECT 1"))
 
-=======
->>>>>>> d9884f08b13838751b1573eb76b9d18855a76767
+app.include_router(worker.router, prefix="/worker", tags=["worker"])
 app.include_router(kpis.router, tags=["analytics"])
 
 @app.get("/health", summary="Health Check")

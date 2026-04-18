@@ -15,15 +15,21 @@ A standard JSON payload reflecting a worker's shift history.
 ```json
 {
   "worker_id": "W-1234",
+  "currency": "PKR",
   "shifts": [
     {
       "date": "2026-04-10",
+      "platform": "Uber",
       "hours_worked": 8.5,
       "gross_earned": 2500.0,
       "platform_deductions": 500.0,
       "net_received": 2000.0
     }
-  ]
+  ],
+  "options": {
+    "z_threshold": 2.5,
+    "mom_drop_pct": 20.0
+  }
 }
 ```
 
@@ -31,10 +37,22 @@ A standard JSON payload reflecting a worker's shift history.
 Returns a processed aggregate evaluation isolating standard deviations and statistical alerts inside plain human-readable strings.
 ```json
 {
-  "worker_id": "W-1234",
-  "status": "issues_found",
+  "summary": {
+    "shifts_analysed": 1,
+    "windows": ["weekly", "monthly"]
+  },
   "anomalies": [
-    "Your platform took 40.0% in deductions recently vs your usual 10.0%."
+    {
+      "kind": "deduction_spike",
+      "severity": "high",
+      "window": "Week ending 2026-04-16",
+      "metric": "deduction_pct",
+      "observed": 0.40,
+      "baseline_mean": 0.10,
+      "baseline_std": 0.01,
+      "z": 30.0,
+      "explanation": "Your platform cut 40% this week versus your usual 10%."
+    }
   ]
 }
 ```
@@ -74,7 +92,26 @@ Returns a `k-anonymity` protected statistical rate isolating local aggregates.
 
 ---
 
-## 3. Analytics Service (Advocate-Facing)
+## 3. Analytics Service (Sprint 2 - Worker Endpoints Skeleton)
+
+**Endpoints:** `GET /worker/summary`, `GET /worker/trends`, `GET /worker/commission-tracker`, `GET /worker/median-compare`
+**Authorization:** Required (JWT Bearer)
+
+### Outputs (Stubs)
+These endpoints were freshly skeletonized in Sprint 1 to prepare for Sprint 2 DB integrations.
+- `/worker/summary`: Returns `{"total_earned": 0.0, "total_hours": 0.0, "verified_ratio": 0.0}`
+- `/worker/trends`: Returns `{"weeks": [], "earnings": []}` 
+- `/worker/commission-tracker`: Returns `{"average_commission": 0.0, "trend": "neutral"}`
+- `/worker/median-compare`: Returns `{"worker_median": 0.0, "city_median": 0.0, "difference_pct": 0.0}`
+
+### Dedicated Use Cases
+1. **Dashboard Entry:** Worker drops into the app. `/worker/summary` paints the unified header tiles natively summarizing all aggregate platforms.
+2. **Growth vs Plunge:** The `/worker/trends` graph exposes line trends proving whether earnings correlate with app algorithm updates across weeks.
+3. **Ghost Commission Checks:** The `/worker/commission-tracker` notifies drivers silently if their platform has stealthily bumped commissions from 10% to 20% compared to city rivals.
+
+---
+
+## 4. Analytics Service (Advocate-Facing)
 
 **Endpoint:** `GET /advocate/kpis`
 **Blueprint Reference:** Module: Advocate Analytics (AA1, AA2, AA4)
