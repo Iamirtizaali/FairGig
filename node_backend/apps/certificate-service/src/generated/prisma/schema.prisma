@@ -16,20 +16,30 @@ datasource db {
 
 // ─── Read-only models (owned by earnings-service) ────────────────────────────
 
+enum ShiftVerificationStatus {
+  self_attested
+  pending_review
+  verified
+  discrepancy_flagged
+  unverifiable
+
+  @@schema("earnings")
+}
+
 model Shift {
-  id                 String    @id
+  id                 String                  @id
   workerId           String
   platformId         String
   cityZoneId         String?
-  shiftDate          DateTime  @db.Date
-  hoursWorked        Decimal   @db.Decimal(6, 2)
-  grossPay           Decimal   @db.Decimal(12, 2)
-  deductions         Decimal   @db.Decimal(12, 2)
-  netPay             Decimal   @db.Decimal(12, 2)
-  currency           String    @db.Char(3)
-  verificationStatus String
+  shiftDate          DateTime                @db.Date
+  hoursWorked        Decimal                 @db.Decimal(6, 2)
+  grossPay           Decimal                 @db.Decimal(12, 2)
+  deductions         Decimal                 @db.Decimal(12, 2)
+  netPay             Decimal                 @db.Decimal(12, 2)
+  currency           String                  @db.Char(3)
+  verificationStatus ShiftVerificationStatus
   deletedAt          DateTime?
-  createdAt          DateTime  @default(now())
+  createdAt          DateTime                @default(now())
 
   platform Platform  @relation(fields: [platformId], references: [id])
   cityZone CityZone? @relation(fields: [cityZoneId], references: [id])

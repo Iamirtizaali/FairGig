@@ -40,6 +40,26 @@ export type Certificate = $Result.DefaultSelection<Prisma.$CertificatePayload>
 export type AuditEvent = $Result.DefaultSelection<Prisma.$AuditEventPayload>
 
 /**
+ * Enums
+ */
+export namespace $Enums {
+  export const ShiftVerificationStatus: {
+  self_attested: 'self_attested',
+  pending_review: 'pending_review',
+  verified: 'verified',
+  discrepancy_flagged: 'discrepancy_flagged',
+  unverifiable: 'unverifiable'
+};
+
+export type ShiftVerificationStatus = (typeof ShiftVerificationStatus)[keyof typeof ShiftVerificationStatus]
+
+}
+
+export type ShiftVerificationStatus = $Enums.ShiftVerificationStatus
+
+export const ShiftVerificationStatus: typeof $Enums.ShiftVerificationStatus
+
+/**
  * ##  Prisma Client ʲˢ
  * 
  * Type-safe database client for TypeScript & Node.js
@@ -1285,7 +1305,7 @@ export namespace Prisma {
     deductions: Decimal | null
     netPay: Decimal | null
     currency: string | null
-    verificationStatus: string | null
+    verificationStatus: $Enums.ShiftVerificationStatus | null
     deletedAt: Date | null
     createdAt: Date | null
   }
@@ -1301,7 +1321,7 @@ export namespace Prisma {
     deductions: Decimal | null
     netPay: Decimal | null
     currency: string | null
-    verificationStatus: string | null
+    verificationStatus: $Enums.ShiftVerificationStatus | null
     deletedAt: Date | null
     createdAt: Date | null
   }
@@ -1484,7 +1504,7 @@ export namespace Prisma {
     deductions: Decimal
     netPay: Decimal
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt: Date | null
     createdAt: Date
     _count: ShiftCountAggregateOutputType | null
@@ -1586,7 +1606,7 @@ export namespace Prisma {
       deductions: Prisma.Decimal
       netPay: Prisma.Decimal
       currency: string
-      verificationStatus: string
+      verificationStatus: $Enums.ShiftVerificationStatus
       deletedAt: Date | null
       createdAt: Date
     }, ExtArgs["result"]["shift"]>
@@ -1994,7 +2014,7 @@ export namespace Prisma {
     readonly deductions: FieldRef<"Shift", 'Decimal'>
     readonly netPay: FieldRef<"Shift", 'Decimal'>
     readonly currency: FieldRef<"Shift", 'String'>
-    readonly verificationStatus: FieldRef<"Shift", 'String'>
+    readonly verificationStatus: FieldRef<"Shift", 'ShiftVerificationStatus'>
     readonly deletedAt: FieldRef<"Shift", 'DateTime'>
     readonly createdAt: FieldRef<"Shift", 'DateTime'>
   }
@@ -6274,6 +6294,20 @@ export namespace Prisma {
 
 
   /**
+   * Reference to a field of type 'ShiftVerificationStatus'
+   */
+  export type EnumShiftVerificationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ShiftVerificationStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'ShiftVerificationStatus[]'
+   */
+  export type ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'ShiftVerificationStatus[]'>
+    
+
+
+  /**
    * Reference to a field of type 'Boolean'
    */
   export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
@@ -6318,7 +6352,7 @@ export namespace Prisma {
     deductions?: DecimalFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     currency?: StringFilter<"Shift"> | string
-    verificationStatus?: StringFilter<"Shift"> | string
+    verificationStatus?: EnumShiftVerificationStatusFilter<"Shift"> | $Enums.ShiftVerificationStatus
     deletedAt?: DateTimeNullableFilter<"Shift"> | Date | string | null
     createdAt?: DateTimeFilter<"Shift"> | Date | string
     platform?: XOR<PlatformRelationFilter, PlatformWhereInput>
@@ -6357,7 +6391,7 @@ export namespace Prisma {
     deductions?: DecimalFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     currency?: StringFilter<"Shift"> | string
-    verificationStatus?: StringFilter<"Shift"> | string
+    verificationStatus?: EnumShiftVerificationStatusFilter<"Shift"> | $Enums.ShiftVerificationStatus
     deletedAt?: DateTimeNullableFilter<"Shift"> | Date | string | null
     createdAt?: DateTimeFilter<"Shift"> | Date | string
     platform?: XOR<PlatformRelationFilter, PlatformWhereInput>
@@ -6399,7 +6433,7 @@ export namespace Prisma {
     deductions?: DecimalWithAggregatesFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     netPay?: DecimalWithAggregatesFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     currency?: StringWithAggregatesFilter<"Shift"> | string
-    verificationStatus?: StringWithAggregatesFilter<"Shift"> | string
+    verificationStatus?: EnumShiftVerificationStatusWithAggregatesFilter<"Shift"> | $Enums.ShiftVerificationStatus
     deletedAt?: DateTimeNullableWithAggregatesFilter<"Shift"> | Date | string | null
     createdAt?: DateTimeWithAggregatesFilter<"Shift"> | Date | string
   }
@@ -6672,7 +6706,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
     platform: PlatformCreateNestedOneWithoutShiftsInput
@@ -6690,7 +6724,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
   }
@@ -6704,7 +6738,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     platform?: PlatformUpdateOneRequiredWithoutShiftsNestedInput
@@ -6722,7 +6756,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -6738,7 +6772,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
   }
@@ -6752,7 +6786,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -6768,7 +6802,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -7120,6 +7154,13 @@ export namespace Prisma {
     not?: NestedDecimalFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
   }
 
+  export type EnumShiftVerificationStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ShiftVerificationStatus | EnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumShiftVerificationStatusFilter<$PrismaModel> | $Enums.ShiftVerificationStatus
+  }
+
   export type DateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -7272,6 +7313,16 @@ export namespace Prisma {
     _sum?: NestedDecimalFilter<$PrismaModel>
     _min?: NestedDecimalFilter<$PrismaModel>
     _max?: NestedDecimalFilter<$PrismaModel>
+  }
+
+  export type EnumShiftVerificationStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ShiftVerificationStatus | EnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumShiftVerificationStatusWithAggregatesFilter<$PrismaModel> | $Enums.ShiftVerificationStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumShiftVerificationStatusFilter<$PrismaModel>
+    _max?: NestedEnumShiftVerificationStatusFilter<$PrismaModel>
   }
 
   export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -7507,6 +7558,10 @@ export namespace Prisma {
     divide?: Decimal | DecimalJsLike | number | string
   }
 
+  export type EnumShiftVerificationStatusFieldUpdateOperationsInput = {
+    set?: $Enums.ShiftVerificationStatus
+  }
+
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
   }
@@ -7671,6 +7726,13 @@ export namespace Prisma {
     not?: NestedDecimalFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
   }
 
+  export type NestedEnumShiftVerificationStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.ShiftVerificationStatus | EnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumShiftVerificationStatusFilter<$PrismaModel> | $Enums.ShiftVerificationStatus
+  }
+
   export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -7766,6 +7828,16 @@ export namespace Prisma {
     _sum?: NestedDecimalFilter<$PrismaModel>
     _min?: NestedDecimalFilter<$PrismaModel>
     _max?: NestedDecimalFilter<$PrismaModel>
+  }
+
+  export type NestedEnumShiftVerificationStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.ShiftVerificationStatus | EnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.ShiftVerificationStatus[] | ListEnumShiftVerificationStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumShiftVerificationStatusWithAggregatesFilter<$PrismaModel> | $Enums.ShiftVerificationStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumShiftVerificationStatusFilter<$PrismaModel>
+    _max?: NestedEnumShiftVerificationStatusFilter<$PrismaModel>
   }
 
   export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -7926,7 +7998,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
     cityZone?: CityZoneCreateNestedOneWithoutShiftsInput
@@ -7942,7 +8014,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
   }
@@ -7987,7 +8059,7 @@ export namespace Prisma {
     deductions?: DecimalFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFilter<"Shift"> | Decimal | DecimalJsLike | number | string
     currency?: StringFilter<"Shift"> | string
-    verificationStatus?: StringFilter<"Shift"> | string
+    verificationStatus?: EnumShiftVerificationStatusFilter<"Shift"> | $Enums.ShiftVerificationStatus
     deletedAt?: DateTimeNullableFilter<"Shift"> | Date | string | null
     createdAt?: DateTimeFilter<"Shift"> | Date | string
   }
@@ -8001,7 +8073,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
     platform: PlatformCreateNestedOneWithoutShiftsInput
@@ -8017,7 +8089,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
   }
@@ -8058,7 +8130,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
   }
@@ -8072,7 +8144,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     cityZone?: CityZoneUpdateOneWithoutShiftsNestedInput
@@ -8088,7 +8160,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8103,7 +8175,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8118,7 +8190,7 @@ export namespace Prisma {
     deductions: Decimal | DecimalJsLike | number | string
     netPay: Decimal | DecimalJsLike | number | string
     currency: string
-    verificationStatus: string
+    verificationStatus: $Enums.ShiftVerificationStatus
     deletedAt?: Date | string | null
     createdAt?: Date | string
   }
@@ -8132,7 +8204,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     platform?: PlatformUpdateOneRequiredWithoutShiftsNestedInput
@@ -8148,7 +8220,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -8163,7 +8235,7 @@ export namespace Prisma {
     deductions?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     netPay?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     currency?: StringFieldUpdateOperationsInput | string
-    verificationStatus?: StringFieldUpdateOperationsInput | string
+    verificationStatus?: EnumShiftVerificationStatusFieldUpdateOperationsInput | $Enums.ShiftVerificationStatus
     deletedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

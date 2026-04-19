@@ -282,7 +282,7 @@ export default function VerifierReviewPage() {
 
               <div className="grid grid-cols-2 gap-4 mt-auto">
                 <Button
-                  onClick={() => handleDecision('discrepancy_flagged')}
+                  onClick={() => handleDecision('discrepancy')}
                   disabled={submitting}
                   className="bg-[#F87171]/10 text-[#F87171] hover:bg-[#F87171]/20 border border-[#F87171]/20 h-14 text-base font-bold"
                 >
@@ -291,7 +291,7 @@ export default function VerifierReviewPage() {
                     : <><XCircle className="h-5 w-5 mr-2" />Reject / Flag</>}
                 </Button>
                 <Button
-                  onClick={() => handleDecision('verified')}
+                  onClick={() => handleDecision('confirmed')}
                   disabled={submitting}
                   className="bg-[#6EE7B7] text-[#0A0E1A] hover:bg-[#6EE7B7]/90 h-14 text-base font-bold"
                 >

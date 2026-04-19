@@ -54,62 +54,56 @@ async function processCsvImport(job: CsvImportJob): Promise<void> {
     const buffer = await downloadFromStorage(storageKey);
     const stream = Readable.from(buffer);
 
-    await new Promise<void>((resolve, reject) => {
-      const parser = parse({
+    const parser = stream.pipe(
+      parse({
         columns: true,
         skip_empty_lines: true,
         trim: true,
+      })
+    );
+
+    for await (const rawRecord of parser) {
+      const record = rawRecord as CsvRow;
+      rowsTotal++;
+      const rowNum = rowsTotal;
+
+      const parsed = createShiftSchema.safeParse({
+        platformId: record.platformId,
+        cityZoneId: record.cityZoneId || undefined,
+        shiftDate: record.shiftDate,
+        hoursWorked: record.hoursWorked,
+        grossPay: record.grossPay,
+        deductions: record.deductions ?? 0,
+        netPay: record.netPay,
+        currency: record.currency || 'PKR',
+        notes: record.notes || undefined,
       });
 
-      parser.on('readable', async () => {
-        let record: CsvRow;
-        while ((record = parser.read() as CsvRow) !== null) {
-          rowsTotal++;
-          const rowNum = rowsTotal;
+      if (!parsed.success) {
+        const errors = parsed.error.errors.map((e) => e.message).join('; ');
+        errorRows.push({ ...record, _error: errors, _row: rowNum });
+        continue;
+      }
 
-          const parsed = createShiftSchema.safeParse({
-            platformId: record.platformId,
-            cityZoneId: record.cityZoneId || undefined,
-            shiftDate: record.shiftDate,
-            hoursWorked: record.hoursWorked,
-            grossPay: record.grossPay,
-            deductions: record.deductions ?? 0,
-            netPay: record.netPay,
-            currency: record.currency || 'PKR',
-            notes: record.notes || undefined,
-          });
+      // Validate financial integrity (gross - deductions = net)
+      const { grossPay, deductions, netPay } = parsed.data;
+      if (Math.abs(grossPay - deductions - netPay) > 0.01) {
+        errorRows.push({
+          ...record,
+          _error: `net_pay must equal gross_pay minus deductions (expected ${(grossPay - deductions).toFixed(2)})`,
+          _row: rowNum,
+        });
+        continue;
+      }
 
-          if (!parsed.success) {
-            const errors = parsed.error.errors.map((e) => e.message).join('; ');
-            errorRows.push({ ...record, _error: errors, _row: rowNum });
-            continue;
-          }
+      validBatch.push({ ...parsed.data, workerId, source: 'csv' });
 
-          // Validate financial integrity (gross - deductions = net)
-          const { grossPay, deductions, netPay } = parsed.data;
-          if (Math.abs(grossPay - deductions - netPay) > 0.01) {
-            errorRows.push({
-              ...record,
-              _error: `net_pay must equal gross_pay minus deductions (expected ${(grossPay - deductions).toFixed(2)})`,
-              _row: rowNum,
-            });
-            continue;
-          }
-
-          validBatch.push({ ...parsed.data, workerId, source: 'csv' });
-
-          if (validBatch.length >= BATCH_SIZE) {
-            const batch = validBatch.splice(0, BATCH_SIZE);
-            await prisma.shift.createMany({ data: batch as never[], skipDuplicates: true });
-            rowsOk += batch.length;
-          }
-        }
-      });
-
-      parser.on('error', reject);
-      parser.on('end', resolve);
-      stream.pipe(parser);
-    });
+      if (validBatch.length >= BATCH_SIZE) {
+        const batch = validBatch.splice(0, BATCH_SIZE);
+        await prisma.shift.createMany({ data: batch as never[], skipDuplicates: true });
+        rowsOk += batch.length;
+      }
+    }
 
     // Flush remaining valid rows
     if (validBatch.length > 0) {

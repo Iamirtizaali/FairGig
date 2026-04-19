@@ -1,12 +1,14 @@
 import { ShieldCheck, Download, Share2, AlertCircle, Loader2, AlertTriangle, Copy, CheckCircle2, Link2Off } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { fadeUp, staggerContainer } from '@/lib/motion'
 import { font } from '@/lib/fonts'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
 import {
   useBuildCertificateQuery,
   useShareCertificateMutation,
@@ -120,6 +122,31 @@ function CertificatePreview({ data, workerName }: { data: CertificateData; worke
 
 export default function WorkerCertificatePage() {
   const user = useAuthStore((s) => s.user)
+  const targetRef = useRef<HTMLDivElement>(null)
+  const [isExporting, setIsExporting] = useState(false)
+
+  const handleDownloadPdf = async () => {
+    if (!targetRef.current) return
+    setIsExporting(true)
+    try {
+      const canvas = await html2canvas(targetRef.current, { scale: 2, useCORS: true })
+      const imgData = canvas.toDataURL('image/png')
+      // PDF dimensions calculated based on image pixels for crisp rendering
+      const pdf = new jsPDF({
+        orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+        unit: 'px',
+        format: [canvas.width, canvas.height]
+      })
+      pdf.addImage(imgData, 'PNG', 0, 0, canvas.width, canvas.height)
+      pdf.save('fairgig_income_certificate.pdf')
+    } catch (err) {
+      console.error('Failed to export PDF:', err)
+      alert("Failed to build PDF")
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   const [from, setFrom]       = useState(monthsAgo(1))
   const [to, setTo]           = useState(today())
   const [ttlDays, setTtlDays] = useState(14)
@@ -255,9 +282,14 @@ export default function WorkerCertificatePage() {
             <div className="bg-[#1B1F2C] border border-[#1E293B] rounded-2xl overflow-hidden h-full flex flex-col">
               <div className="p-4 border-b border-[#1E293B] flex items-center justify-between bg-[#111827]">
                 <h3 className="font-semibold text-white">Live Preview</h3>
-                <Button size="sm" className="bg-[#00D4FF] text-[#0A0E1A] hover:bg-[#00D4FF]/90 font-bold" disabled>
-                  <Download className="h-4 w-4 mr-2" />
-                  Download PDF
+                <Button 
+                  size="sm" 
+                  onClick={handleDownloadPdf} 
+                  className="bg-[#00D4FF] text-[#0A0E1A] hover:bg-[#00D4FF]/90 font-bold" 
+                  disabled={!cert || isLoading || isExporting}
+                >
+                  {isExporting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Download className="h-4 w-4 mr-2" />}
+                  {isExporting ? 'Exporting...' : 'Download PDF'}
                 </Button>
               </div>
 
@@ -277,7 +309,9 @@ export default function WorkerCertificatePage() {
                 )}
                 {!isLoading && !isError && cert && (
                   <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
-                    <CertificatePreview data={cert} workerName={user?.name ?? 'Worker'} />
+                    <div ref={targetRef} className="bg-[#0A0E1A] p-6 rounded-2xl w-full max-w-[800px] shrink-0">
+                      <CertificatePreview data={cert} workerName={user?.name ?? 'Worker'} />
+                    </div>
                   </motion.div>
                 )}
                 {!isLoading && !isError && !cert && (

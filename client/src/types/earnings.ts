@@ -12,7 +12,7 @@ export type ShiftVerificationStatus =
   | 'discrepancy_flagged'
   | 'unverifiable'
 
-export type VerifyDecision = 'verified' | 'discrepancy_flagged' | 'unverifiable'
+export type VerifyDecision = 'confirmed' | 'discrepancy' | 'unverifiable'
 
 /** Alias used in ReviewPage component for clarity */
 export type VerifyShiftDecision = VerifyDecision
@@ -112,19 +112,15 @@ export interface CsvImport {
 
 // For the verifier queue — enriched item
 export interface QueueItem {
-  id: string
+  shiftId: string
   workerId: string
   workerName: string | null
-  platformId: string
-  platform: Pick<Platform, 'id' | 'name' | 'slug'>
   shiftDate: string
-  hoursWorked: number
-  grossPay: number
-  netPay: number
-  currency: string
-  verificationStatus: ShiftVerificationStatus
+  grossPay: string
+  netPay: string
+  platform: string
+  screenshotCount: number
   createdAt: string
-  updatedAt: string
 }
 
 // ─── Request Types ────────────────────────────────────────────────────────────

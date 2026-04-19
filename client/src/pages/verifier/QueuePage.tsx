@@ -21,7 +21,7 @@ const PAGE_SIZE = 20
 const SLA_WINDOW_MS = 24 * 60 * 60 * 1000 // 24h window from submission
 
 function slaRemaining(item: QueueItem): number {
-  const submitted = new Date(item.updatedAt ?? item.createdAt).getTime()
+  const submitted = new Date(item.createdAt).getTime()
   return Math.max(0, submitted + SLA_WINDOW_MS - Date.now())
 }
 
@@ -57,7 +57,7 @@ export default function VerifierQueuePage() {
   // Client-side search filter
   const filtered = search.trim()
     ? queueItems.filter((s) =>
-        s.id.toLowerCase().includes(search.toLowerCase()) ||
+        s.shiftId.toLowerCase().includes(search.toLowerCase()) ||
         s.workerId.toLowerCase().includes(search.toLowerCase()),
       )
     : queueItems
@@ -149,17 +149,17 @@ export default function VerifierQueuePage() {
                     const remaining = slaRemaining(item)
                     const level     = slaLevel(remaining)
                     return (
-                      <tr key={item.id} className="hover:bg-white/5 transition-colors group">
+                      <tr key={item.shiftId} className="hover:bg-white/5 transition-colors group">
                         <td className="p-4">
                           <div className="flex flex-col">
-                            <span className={`text-white font-medium ${font.mono}`}>{item.id.slice(0, 14)}…</span>
+                            <span className={`text-white font-medium ${font.mono}`}>{item.shiftId.slice(0, 14)}…</span>
                             <span className="text-xs text-[#94A3B8] mt-0.5">
                               {item.workerName ?? `Worker: ${item.workerId.slice(0, 10)}…`}
                             </span>
                           </div>
                         </td>
                         <td className="p-4">
-                          <PlatformChip platform={item.platform.name} />
+                          <PlatformChip platform={item.platform} />
                         </td>
                         <td className="p-4">
                           <span className={`text-white ${font.mono}`}>Rs {Number(item.netPay).toLocaleString()}</span>
@@ -185,7 +185,7 @@ export default function VerifierQueuePage() {
                             asChild
                             className="bg-[#00D4FF] text-[#0A0E1A] hover:bg-[#00D4FF]/90 font-bold opacity-0 group-hover:opacity-100 transition-opacity"
                           >
-                            <Link to={`/verify/${item.id}`}>Review Shift</Link>
+                            <Link to={`/verify/${item.shiftId}`}>Review Shift</Link>
                           </Button>
                         </td>
                       </tr>

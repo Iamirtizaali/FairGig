@@ -127,7 +127,7 @@ export async function getVerificationQueue(page: number, limit: number) {
       COUNT(sc.id)::int              AS "screenshotCount",
       s."createdAt"::text            AS "createdAt"
     FROM earnings.shifts s
-    LEFT JOIN auth.users u     ON u.id = s."workerId"
+    LEFT JOIN auth.users u     ON u.id = s."workerId"::uuid
     LEFT JOIN earnings.platforms p ON p.id = s."platformId"
     LEFT JOIN earnings.screenshots sc
            ON sc."shiftId" = s.id AND sc."deletedAt" IS NULL

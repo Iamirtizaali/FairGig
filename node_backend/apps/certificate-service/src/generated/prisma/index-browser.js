@@ -203,7 +203,13 @@ exports.Prisma.JsonNullValueFilter = {
   JsonNull: Prisma.JsonNull,
   AnyNull: Prisma.AnyNull
 };
-
+exports.ShiftVerificationStatus = exports.$Enums.ShiftVerificationStatus = {
+  self_attested: 'self_attested',
+  pending_review: 'pending_review',
+  verified: 'verified',
+  discrepancy_flagged: 'discrepancy_flagged',
+  unverifiable: 'unverifiable'
+};
 
 exports.Prisma.ModelName = {
   Shift: 'Shift',
