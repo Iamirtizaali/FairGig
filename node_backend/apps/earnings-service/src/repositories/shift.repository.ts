@@ -52,7 +52,7 @@ export const shiftRepository = {
 
     const [shifts, total] = await Promise.all([
       prisma.shift.findMany({
-        where: where as Parameters<typeof prisma.shift.findMany>[0]['where'],
+        where: where as never,
         include: {
           platform: { select: { id: true, name: true, slug: true, logoUrl: true } },
           cityZone: { select: { id: true, city: true, zone: true } },
@@ -61,7 +61,7 @@ export const shiftRepository = {
         take: opts.limit,
         orderBy: { shiftDate: 'desc' },
       }),
-      prisma.shift.count({ where: where as Parameters<typeof prisma.shift.count>[0]['where'] }),
+      prisma.shift.count({ where: where as never }),
     ]);
 
     return { shifts, total };

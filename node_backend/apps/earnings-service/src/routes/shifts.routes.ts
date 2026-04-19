@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import { createShiftSchema, updateShiftSchema } from '../validators/shift.schema';
 import * as ctrl from '../controllers/shift.controller';
 
-export const shiftsRouter = Router();
+export const shiftsRouter: ExpressRouter = Router();
 
 shiftsRouter.use(authenticate);
 

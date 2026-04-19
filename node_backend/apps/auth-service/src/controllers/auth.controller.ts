@@ -1,4 +1,4 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, RequestHandler } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess, sendCreated } from '../utils/response';
 import { env } from '../config/env';
@@ -23,19 +23,19 @@ function clearRefreshCookie(res: Response) {
 
 // ─── Public ──────────────────────────────────────────────────────────────────
 
-export const register = asyncHandler(async (req: Request, res: Response) => {
+export const register: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const { user, accessToken, refreshToken } = await authService.register(req.body, req);
   setRefreshCookie(res, refreshToken);
   sendCreated(res, { user, accessToken });
 });
 
-export const login = asyncHandler(async (req: Request, res: Response) => {
+export const login: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const { user, accessToken, refreshToken } = await authService.login(req.body, req);
   setRefreshCookie(res, refreshToken);
   sendSuccess(res, { user, accessToken });
 });
 
-export const refresh = asyncHandler(async (req: Request, res: Response) => {
+export const refresh: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE];
   if (!rawToken) {
     res.status(401).json({ data: null, meta: {}, error: { code: 'MISSING_REFRESH_TOKEN', message: 'Refresh token cookie is missing' } });
@@ -46,67 +46,67 @@ export const refresh = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, { accessToken });
 });
 
-export const logout = asyncHandler(async (req: Request, res: Response) => {
+export const logout: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const rawToken: string | undefined = req.cookies?.[REFRESH_COOKIE];
   if (rawToken) await authService.logout(rawToken, req);
   clearRefreshCookie(res);
   sendSuccess(res, null);
 });
 
-export const forgotPassword = asyncHandler(async (req: Request, res: Response) => {
+export const forgotPassword: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   await authService.forgotPassword(req.body.email);
   sendSuccess(res, null);
 });
 
-export const resetPassword = asyncHandler(async (req: Request, res: Response) => {
+export const resetPassword: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   await authService.resetPassword(req.body.token, req.body.password, req);
   sendSuccess(res, null);
 });
 
 // ─── Authenticated ────────────────────────────────────────────────────────────
 
-export const changePassword = asyncHandler(async (req: Request, res: Response) => {
+export const changePassword: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   await authService.changePassword(req.user!.sub, req.body.oldPassword, req.body.newPassword, req);
   sendSuccess(res, null);
 });
 
-export const getMe = asyncHandler(async (req: Request, res: Response) => {
+export const getMe: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const user = await authService.getMe(req.user!.sub);
   sendSuccess(res, { user });
 });
 
-export const updateMe = asyncHandler(async (req: Request, res: Response) => {
+export const updateMe: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const user = await authService.updateMe(req.user!.sub, req.body);
   sendSuccess(res, { user });
 });
 
 // ─── Role requests ────────────────────────────────────────────────────────────
 
-export const createRoleRequest = asyncHandler(async (req: Request, res: Response) => {
+export const createRoleRequest: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const roleRequest = await authService.createRoleRequest(req.user!.sub, req.body, req);
   sendCreated(res, { roleRequest });
 });
 
-export const getRoleRequests = asyncHandler(async (req: Request, res: Response) => {
+export const getRoleRequests: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const page = Number(String(req.query.page ?? '1')) || 1;
   const limit = Math.min(Number(String(req.query.limit ?? '20')) || 20, 100);
   const { requests, total } = await authService.getRoleRequests({ page, limit });
   sendSuccess(res, { requests }, 200, { page, limit, total });
 });
 
-export const approveRoleRequest = asyncHandler(async (req: Request, res: Response) => {
+export const approveRoleRequest: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   await authService.approveRoleRequest(String(req.params.id), req.user!.sub, req);
   sendSuccess(res, null);
 });
 
-export const rejectRoleRequest = asyncHandler(async (req: Request, res: Response) => {
+export const rejectRoleRequest: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   await authService.rejectRoleRequest(String(req.params.id), req.user!.sub, req);
   sendSuccess(res, null);
 });
 
 // ─── Admin ────────────────────────────────────────────────────────────────────
 
-export const listUsers = asyncHandler(async (req: Request, res: Response) => {
+export const listUsers: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const page = Number(String(req.query.page ?? '1')) || 1;
   const limit = Math.min(Number(String(req.query.limit ?? '20')) || 20, 100);
   const role = req.query.role as string | undefined;
@@ -116,7 +116,7 @@ export const listUsers = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, { users }, 200, { page, limit, total });
 });
 
-export const getAuditLog = asyncHandler(async (req: Request, res: Response) => {
+export const getAuditLog: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const page = Number(String(req.query.page ?? '1')) || 1;
   const limit = Math.min(Number(String(req.query.limit ?? '50')) || 50, 200);
   const { events, total } = await authService.getAuditLog({
@@ -131,7 +131,7 @@ export const getAuditLog = asyncHandler(async (req: Request, res: Response) => {
   sendSuccess(res, { events }, 200, { page, limit, total });
 });
 
-export const updateUserStatus = asyncHandler(async (req: Request, res: Response) => {
+export const updateUserStatus: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const user = await authService.updateUserStatus(String(req.params.id), req.body.status, req.user!.sub, req);
   sendSuccess(res, { user });
 });

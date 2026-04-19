@@ -1,5 +1,5 @@
 import rateLimit from 'express-rate-limit';
-import { RedisStore } from 'rate-limit-redis';
+import { RedisStore, type SendCommandFn } from 'rate-limit-redis';
 import { getRedis, sendRedisCommand } from '../lib/redis';
 
 const errorBody = (code: string, message: string) => ({
@@ -13,7 +13,7 @@ function redisStoreOptions() {
   if (!redis) return {};
   return {
     store: new RedisStore({
-      sendCommand: sendRedisCommand,
+      sendCommand: sendRedisCommand as unknown as SendCommandFn,
     }),
   };
 }

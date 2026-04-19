@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { rbac } from '../middleware/rbac';
 import { buildCertificateSchema, shareCertificateSchema } from '../validators/certificate.schema';
 import * as ctrl from '../controllers/certificate.controller';
 
-export const certificateRouter = Router();
+export const certificateRouter: ExpressRouter = Router();
 
 /**
  * @openapi

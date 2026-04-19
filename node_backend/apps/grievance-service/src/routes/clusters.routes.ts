@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import { createClusterSchema, attachToClusterSchema } from '../validators/grievance.schema';
 import * as ctrl from '../controllers/cluster.controller';
 
-export const clustersRouter = Router();
+export const clustersRouter: ExpressRouter = Router();
 
 clustersRouter.use(authenticate);
 

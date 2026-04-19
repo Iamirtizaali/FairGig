@@ -9,6 +9,12 @@ import { notifyUser } from '../services/notification.service';
 import { createShiftSchema } from '../validators/shift.schema';
 import { csvImportQueue, type CsvImportJob } from '../queues/csvImport.queue';
 
+export interface CsvImportJobData {
+  importId:   string;
+  workerId:   string;
+  storageKey: string;
+}
+
 const prisma = getPrisma();
 const BATCH_SIZE = 500;
 const POLL_INTERVAL_MS = 1000;

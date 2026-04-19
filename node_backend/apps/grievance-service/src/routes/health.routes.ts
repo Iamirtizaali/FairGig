@@ -1,7 +1,7 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { getHealth } from '../controllers/health.controller';
 
-export const healthRouter = Router();
+export const healthRouter: ExpressRouter = Router();
 
 /**
  * @openapi

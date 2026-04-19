@@ -1,6 +1,6 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 
-export const boardRouter = Router();
+export const boardRouter: ExpressRouter = Router();
 
 /**
  * @openapi

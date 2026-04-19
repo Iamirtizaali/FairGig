@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
@@ -28,7 +28,7 @@ const upload = multer({
   },
 });
 
-export const importsRouter = Router();
+export const importsRouter: ExpressRouter = Router();
 
 /**
  * @openapi

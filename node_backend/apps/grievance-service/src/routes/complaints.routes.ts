@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
@@ -12,7 +12,7 @@ import {
 } from '../validators/grievance.schema';
 import * as ctrl from '../controllers/complaint.controller';
 
-export const complaintsRouter = Router();
+export const complaintsRouter: ExpressRouter = Router();
 
 complaintsRouter.use(authenticate);
 

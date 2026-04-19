@@ -1,9 +1,9 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import * as ctrl from '../controllers/admin.controller';
 
-export const adminRouter = Router();
+export const adminRouter: ExpressRouter = Router();
 
 /**
  * @openapi

@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import { z } from 'zod';
 import * as ctrl from '../controllers/platform.controller';
 
-export const platformsRouter = Router();
+export const platformsRouter: ExpressRouter = Router();
 
 const createPlatformSchema = z.object({
   name: z.string().min(1).max(100),

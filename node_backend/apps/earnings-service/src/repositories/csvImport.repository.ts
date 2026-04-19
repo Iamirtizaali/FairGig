@@ -1,5 +1,5 @@
 import { getPrisma } from '../lib/prisma';
-import type { ImportStatus } from '../generated/prisma';
+import { Prisma, type ImportStatus } from '../generated/prisma';
 
 const prisma = getPrisma();
 
@@ -23,8 +23,22 @@ export const csvImportRepository = {
       errorCsvKey?: string | null;
       startedAt?: Date;
       finishedAt?: Date;
+      jobId?: string;
     },
   ) {
-    return prisma.csvImport.update({ where: { id }, data: patch });
+    const data: Prisma.CsvImportUpdateInput = {
+      status:      patch.status,
+      rowsTotal:   patch.rowsTotal,
+      rowsOk:      patch.rowsOk,
+      rowsFailed:  patch.rowsFailed,
+      errorCsvKey: patch.errorCsvKey ?? undefined,
+      startedAt:   patch.startedAt,
+      finishedAt:  patch.finishedAt,
+      jobId:       patch.jobId,
+      ...(patch.errorLog !== undefined
+        ? { errorLog: patch.errorLog as Prisma.InputJsonValue }
+        : {}),
+    };
+    return prisma.csvImport.update({ where: { id }, data });
   },
 };

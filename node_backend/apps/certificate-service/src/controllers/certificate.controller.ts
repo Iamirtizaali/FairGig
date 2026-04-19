@@ -1,9 +1,9 @@
-import type { Request, Response } from 'express';
+import type { Request, Response, RequestHandler } from 'express';
 import { asyncHandler } from '../utils/asyncHandler';
 import { sendSuccess, sendCreated } from '../utils/response';
 import * as certService from '../services/certificate.service';
 
-export const buildCertificate = asyncHandler(async (req: Request, res: Response) => {
+export const buildCertificate: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const data = await certService.buildCertificateData(req.user!.sub, {
     from: String(req.query['from'] ?? ''),
     to: String(req.query['to'] ?? ''),
@@ -11,12 +11,12 @@ export const buildCertificate = asyncHandler(async (req: Request, res: Response)
   sendSuccess(res, data);
 });
 
-export const shareCertificate = asyncHandler(async (req: Request, res: Response) => {
+export const shareCertificate: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const result = await certService.shareCertificate(req.user!.sub, req.body);
   sendCreated(res, result);
 });
 
-export const getPublicCertificate = asyncHandler(async (req: Request, res: Response) => {
+export const getPublicCertificate: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const accept = req.headers.accept ?? '';
   const token = String(req.params['signedId']);
 
@@ -30,7 +30,7 @@ export const getPublicCertificate = asyncHandler(async (req: Request, res: Respo
   }
 });
 
-export const revokeCertificate = asyncHandler(async (req: Request, res: Response) => {
+export const revokeCertificate: RequestHandler = asyncHandler(async (req: Request, res: Response) => {
   const result = await certService.revokeCertificate(
     String(req.params['signedId']),
     req.user!.sub,

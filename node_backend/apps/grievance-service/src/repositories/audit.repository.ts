@@ -1,4 +1,5 @@
 import { getPrisma } from '../lib/prisma';
+import { Prisma } from '../generated/prisma';
 import type { Request } from 'express';
 
 const prisma = getPrisma();
@@ -22,7 +23,7 @@ export async function writeAuditEvent(input: AuditInput): Promise<void> {
         action: input.action,
         entity: input.entity,
         entityId: input.entityId,
-        diff: input.diff ?? {},
+        diff: (input.diff ?? {}) as Prisma.InputJsonValue,
         ip: input.req?.ip ?? null,
         ua: input.req?.headers['user-agent'] ?? null,
       },

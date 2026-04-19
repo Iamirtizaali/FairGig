@@ -1,10 +1,10 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { validate } from '../middleware/validate';
 import { presignSchema, confirmScreenshotSchema } from '../validators/shift.schema';
 import * as ctrl from '../controllers/screenshot.controller';
 
-export const screenshotsRouter = Router();
+export const screenshotsRouter: ExpressRouter = Router();
 
 screenshotsRouter.use(authenticate);
 

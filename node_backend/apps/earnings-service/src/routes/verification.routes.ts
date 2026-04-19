@@ -1,11 +1,11 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
 import { validate } from '../middleware/validate';
 import { verifyShiftSchema } from '../validators/shift.schema';
 import * as ctrl from '../controllers/verification.controller';
 
-export const verificationRouter = Router();
+export const verificationRouter: ExpressRouter = Router();
 
 verificationRouter.use(authenticate);
 

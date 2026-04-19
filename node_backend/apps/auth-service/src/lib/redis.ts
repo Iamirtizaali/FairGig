@@ -1,5 +1,6 @@
 import { Redis } from '@upstash/redis';
 import { env } from '../config/env';
+import { RedisReply } from 'rate-limit-redis';
 
 let _redis: Redis | null = null;
 

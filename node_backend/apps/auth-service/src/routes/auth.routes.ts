@@ -1,4 +1,4 @@
-import { Router } from 'express';
+import { Router, type Router as ExpressRouter } from 'express';
 import { authRateLimit, passwordResetRateLimit } from '../middleware/rateLimiter';
 import { authenticate } from '../middleware/auth';
 import { rbac } from '../middleware/rbac';
@@ -16,7 +16,7 @@ import {
 } from '../validators/auth.schema';
 import * as ctrl from '../controllers/auth.controller';
 
-export const authRouter = Router();
+export const authRouter: ExpressRouter = Router();
 
 // ─── Public endpoints ─────────────────────────────────────────────────────────
 
