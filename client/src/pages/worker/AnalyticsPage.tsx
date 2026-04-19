@@ -28,7 +28,7 @@ function daysAgo(n: number) {
   return d.toISOString().slice(0, 10)
 }
 
-// ─── Local Derivations (for Platform Pie Chart) ──────────────────────────────
+// ─── Local Derivations (for Charts) ──────────────────────────────────────────
 function derivePlatformSplit(shifts: Shift[]) {
   const platformMap = new Map<string, { name: string; value: number }>()
   shifts.forEach((s) => {
@@ -46,6 +46,36 @@ function derivePlatformSplit(shifts: Shift[]) {
   return { platformSplit, totalNet }
 }
 
+function deriveTrend(shifts: Shift[]) {
+  const sorted = [...shifts].sort((a, b) => a.shiftDate.localeCompare(b.shiftDate))
+  const weekMap = new Map<string, number>()
+  sorted.forEach(s => {
+    const d = new Date(s.shiftDate)
+    const weekStart = new Date(d.setDate(d.getDate() - d.getDay())).toISOString().slice(0, 10)
+    weekMap.set(weekStart, (weekMap.get(weekStart) || 0) + Number(s.netPay))
+  })
+  const series = Array.from(weekMap.entries()).map(([label, earnings]) => ({ label, earnings: Math.round(earnings) }))
+  return series
+}
+
+function deriveCommissions(shifts: Shift[]) {
+  const platMap = new Map<string, { totalGross: number, totalDeductions: number }>()
+  shifts.forEach(s => {
+    const n = s.platform.name
+    const prev = platMap.get(n) || { totalGross: 0, totalDeductions: 0 }
+    platMap.set(n, {
+      totalGross: prev.totalGross + Number(s.grossPay),
+      totalDeductions: prev.totalDeductions + Number(s.deductions)
+    })
+  })
+  const rates = Array.from(platMap.entries()).map(([name, totals]) => {
+    const g = totals.totalGross || 1
+    const d = totals.totalDeductions
+    return { name, rate: Math.round((d / g) * 100) }
+  })
+  return rates
+}
+
 export default function WorkerAnalyticsPage() {
   const user = useAuthStore((s) => s.user)
   const [from, setFrom]   = useState(daysAgo(30))
@@ -58,24 +88,12 @@ export default function WorkerAnalyticsPage() {
   // Local pie chart calc
   const { platformSplit, totalNet } = useMemo(() => derivePlatformSplit(shifts), [shifts])
 
-  // 2. FastAPI Data: Income Trend (12 weeks)
-  const { data: trendData, isLoading: trendLoading } = useWorkerTrendQuery('week')
-  const earningsTrend = trendData?.series ?? []
+  // 2. Local Trend
+  const earningsTrend = useMemo(() => deriveTrend(shifts), [shifts])
   const totalPeriodEarnings = earningsTrend.reduce((s, r) => s + r.earnings, 0)
 
-  // 3. FastAPI Data: Commission Tracker (12 weeks per platform)
-  // We query 'Uber' by default just to trigger it—backend returns series for ALL platforms.
-  const { data: commData, isLoading: commLoading } = useWorkerCommissionTrackerQuery('Uber')
-
-  // Transform commission series into latest averages for the bar chart
-  const commissionRates = useMemo(() => {
-    if (!commData?.platform_series) return []
-    return Object.entries(commData.platform_series).map(([platName, series]) => {
-      // average all data points for the bar chart summarizing the last 12 weeks
-      const avg = series.reduce((sum, pt) => sum + pt.earnings, 0) / (series.length || 1)
-      return { name: platName, rate: Math.round(avg) }
-    })
-  }, [commData])
+  // 3. Local Commission Rates
+  const commissionRates = useMemo(() => deriveCommissions(shifts), [shifts])
 
   // 4. FastAPI Data: Anomaly Detection Mutation (Sprint 5)
   const detectMutation = useAnomalyDetectMutation()
@@ -96,7 +114,7 @@ export default function WorkerAnalyticsPage() {
     })
   }
 
-  const isLoading = shiftsLoading || trendLoading || commLoading
+  const isLoading = shiftsLoading
   const isError = shiftsError
 
   return (
