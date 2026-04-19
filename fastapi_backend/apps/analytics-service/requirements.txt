@@ -7,8 +7,5 @@ httpx
 structlog
 pytest
 pytest-asyncio
-sqlalchemy[asyncio]
-asyncpg
-aiosqlite
 aiocache
 pandas

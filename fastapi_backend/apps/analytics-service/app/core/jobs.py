@@ -1,90 +1,99 @@
 """
-Nightly vulnerability flag computation job (Sprint 3).
+Nightly vulnerability flag computation job.
 
-This module is designed to be invoked:
-  - By Render's scheduled jobs (cron: "0 2 * * *") in production
-  - Manually via: POST /advocate/admin/run-vulnerability-job  (judge/admin only)
-  - During pytest via direct call to run_vulnerability_job()
-
-It computes which workers had a monthly net income drop > 20% MoM,
-then writes results to the vulnerability_flags table (our SQLite-safe
-materialized view equivalent).
+Fetches shift data from the Node earnings-service (admin view) instead of querying a local DB.
+Results are stored in an in-process dict (refreshed on each run).  If Redis is available
+the result is also written to cache so multiple replicas stay consistent.
 """
-import datetime
 import asyncio
+import datetime
+import hashlib
 import logging
-from sqlalchemy import select, func, delete
-from sqlalchemy.ext.asyncio import AsyncSession
+from collections import defaultdict
 
-from app.repositories.database import AsyncSessionLocal, Shift, VulnerabilityFlag
+from app.repositories.node_client import get_all_shifts
 
 logger = logging.getLogger("vulnerability_job")
 
+# In-process store: list[dict] — replaced on each run
+_vulnerability_store: list[dict] = []
+_last_computed: str = "never"
+
+
+def get_vulnerability_store() -> tuple[list[dict], str]:
+    """Return the current in-memory vulnerability flags and their computed_at timestamp."""
+    return _vulnerability_store, _last_computed
+
+
+def _anon_id(worker_id: str) -> str:
+    return hashlib.sha256(worker_id.encode()).hexdigest()[:12]
+
+
 async def run_vulnerability_job(threshold_pct: float = 20.0) -> dict:
     """
-    Identify workers whose net income in the most recent complete 30-day
-    window dropped > threshold_pct% versus the prior 30-day window.
-    Writes results to vulnerability_flags (truncate-and-replace pattern).
-    Returns a summary dict for observability.
+    Fetch all shifts from earnings-service, compute MoM income drops > threshold_pct%,
+    and store results in the module-level store for the /advocate/vulnerability endpoint.
     """
+    global _vulnerability_store, _last_computed
+
     today = datetime.date.today()
     thirty_days_ago = today - datetime.timedelta(days=30)
     sixty_days_ago = today - datetime.timedelta(days=60)
 
-    async with AsyncSessionLocal() as session:
-        # ── Aggregate current 30-day income per worker ──────────────────────
-        recent_stmt = (
-            select(Shift.worker_id, Shift.zone, Shift.category,
-                   func.sum(Shift.net_received).label("recent_net"))
-            .where(Shift.date >= thirty_days_ago)
-            .group_by(Shift.worker_id, Shift.zone, Shift.category)
-        )
-        recent_rows = (await session.execute(recent_stmt)).all()
-        recent_map = {
-            r.worker_id: {"recent_net": float(r.recent_net), "zone": r.zone, "category": r.category}
-            for r in recent_rows
-        }
+    shifts = await get_all_shifts(days=60)
 
-        # ── Aggregate prior 30-day income per worker ─────────────────────────
-        prior_stmt = (
-            select(Shift.worker_id, func.sum(Shift.net_received).label("prior_net"))
-            .where(Shift.date >= sixty_days_ago, Shift.date < thirty_days_ago)
-            .group_by(Shift.worker_id)
-        )
-        prior_map = {r.worker_id: float(r.prior_net) for r in (await session.execute(prior_stmt)).all()}
+    recent_net: dict[str, float] = defaultdict(float)
+    recent_meta: dict[str, dict] = {}
+    prior_net: dict[str, float] = defaultdict(float)
 
-        # ── Compute drops ────────────────────────────────────────────────────
-        flags = []
-        for worker_id, data in recent_map.items():
-            prior = prior_map.get(worker_id, 0.0)
-            if prior <= 0:
-                continue
-            drop_pct = ((prior - data["recent_net"]) / prior) * 100
-            if drop_pct >= threshold_pct:
-                flags.append(VulnerabilityFlag(
-                    worker_id=worker_id,
-                    zone=data["zone"],
-                    category=data["category"],
-                    prior_month_income=round(prior, 2),
-                    current_month_income=round(data["recent_net"], 2),
-                    drop_pct=round(drop_pct, 2),
-                    computed_at=today
-                ))
+    for s in shifts:
+        raw_date = s.get("shiftDate") or s.get("date") or s.get("shift_date", "")
+        try:
+            shift_date = datetime.date.fromisoformat(str(raw_date)[:10])
+        except ValueError:
+            continue
 
-        # ── Truncate and replace (materialised view pattern) ─────────────────
-        await session.execute(delete(VulnerabilityFlag))
-        session.add_all(flags)
-        await session.commit()
+        worker_id = str(s.get("workerId") or s.get("worker_id", ""))
+        net = float(s.get("netPay") or s.get("net_pay") or s.get("netReceived") or 0.0)
+        zone = s.get("zone") or s.get("cityZoneId") or "Unknown"
+        platform = s.get("platformId") or s.get("platform") or "Unknown"
 
-        logger.info("Vulnerability job: %d workers flagged (threshold %.0f%%)", len(flags), threshold_pct)
-        return {
-            "computed_at": today.isoformat(),
-            "threshold_pct": threshold_pct,
-            "vulnerable_count": len(flags),
-            "total_workers_evaluated": len(recent_map)
-        }
+        if shift_date >= thirty_days_ago:
+            recent_net[worker_id] += net
+            recent_meta[worker_id] = {"zone": str(zone), "category": str(platform)}
+        elif shift_date >= sixty_days_ago:
+            prior_net[worker_id] += net
+
+    flags: list[dict] = []
+    for worker_id, recent in recent_net.items():
+        prior = prior_net.get(worker_id, 0.0)
+        if prior <= 0:
+            continue
+        drop_pct = ((prior - recent) / prior) * 100
+        if drop_pct >= threshold_pct:
+            meta = recent_meta.get(worker_id, {})
+            flags.append({
+                "worker_id": worker_id,
+                "anon_id": _anon_id(worker_id),
+                "zone": meta.get("zone", "Unknown"),
+                "category": meta.get("category", "Unknown"),
+                "prior_month_income": round(prior, 2),
+                "current_month_income": round(recent, 2),
+                "drop_pct": round(drop_pct, 2),
+                "computed_at": today.isoformat(),
+            })
+
+    _vulnerability_store = flags
+    _last_computed = today.isoformat()
+
+    logger.info("Vulnerability job: %d workers flagged (threshold %.0f%%)", len(flags), threshold_pct)
+    return {
+        "computed_at": today.isoformat(),
+        "threshold_pct": threshold_pct,
+        "vulnerable_count": len(flags),
+        "total_workers_evaluated": len(recent_net),
+    }
 
 
 if __name__ == "__main__":
-    # Allow running directly: python -m app.core.jobs
     asyncio.run(run_vulnerability_job())

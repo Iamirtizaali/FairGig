@@ -106,11 +106,11 @@ export interface ZoneDistribution {
 }
 
 /**
- * Top complaint-category entry derived from shift data (AA3).
+ * Top complaint-category entry from GET /advocate/kpis (AA3 snapshot).
  */
 export interface TopComplaintCategoryEntry {
   category:          string
-  shift_count:       number
+  count:             number
   avg_commission_pct: number
 }
 

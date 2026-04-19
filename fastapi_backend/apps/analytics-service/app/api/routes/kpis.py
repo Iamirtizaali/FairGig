@@ -1,156 +1,148 @@
-from fastapi import APIRouter, Depends
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, func, case
 import datetime
 import statistics
+from collections import defaultdict
+
 import pandas as pd
+from fastapi import APIRouter, Depends
 
 from app.schemas.kpis import CityMedianResponse, AdvocateKpisResponse, ZoneDistribution
 from app.api.deps import verify_jwt
-from app.repositories.database import get_db, Shift
+from app.repositories.node_client import get_all_shifts, get_all_complaints
 
 router = APIRouter()
 
-@router.get("/benchmark/city-median", summary="Get City Median Benchmark (WA4)", response_model=CityMedianResponse)
-async def get_city_median(category: str, zone: str, db: AsyncSession = Depends(get_db)):
-    """
-    WA4: Returns k-anonymized (k>=5) median hourly rate for verified workers in a specific zone/category.
-    Protects worker privacy — if cohort < 5 workers, returns cohort_too_small=True.
-    """
-    # k-Anonymity Guard (k=5) — from real seeded Shift table
-    count_stmt = select(func.count(Shift.worker_id.distinct())).where(
-        Shift.category == category,
-        Shift.zone == zone,
-        Shift.is_verified == True
-    )
-    worker_count = (await db.execute(count_stmt)).scalar() or 0
 
-    if worker_count < 5:
+def _parse_date(s: dict) -> datetime.date | None:
+    raw = s.get("shiftDate") or s.get("date") or s.get("shift_date") or s.get("createdAt") or ""
+    try:
+        return datetime.date.fromisoformat(str(raw)[:10])
+    except (ValueError, TypeError):
+        return None
+
+
+@router.get("/benchmark/city-median", summary="Get City Median Benchmark (WA4)", response_model=CityMedianResponse)
+async def get_city_median(category: str, zone: str):
+    shifts = await get_all_shifts(days=180)
+
+    cohort = [
+        s for s in shifts
+        if str(s.get("verificationStatus") or "").lower() == "verified"
+        and str(s.get("zone") or s.get("cityZoneId") or "") == zone
+        and str(s.get("platformId") or s.get("platform") or s.get("category") or "") == category
+    ]
+
+    distinct_workers = len({s.get("workerId") or s.get("worker_id") for s in cohort})
+    if distinct_workers < 5:
         return CityMedianResponse(
-            cohort_too_small=True, worker_count=worker_count,
-            category=category, zone=zone, median_hourly_rate=0.0
+            cohort_too_small=True, worker_count=distinct_workers,
+            category=category, zone=zone, median_hourly_rate=0.0,
         )
 
-    stmt = select(
-        (Shift.net_received / Shift.hours_worked).label("hourly_rate")
-    ).where(
-        Shift.category == category,
-        Shift.zone == zone,
-        Shift.is_verified == True,
-        Shift.hours_worked > 0
-    )
-    rates = [float(r) for r in (await db.execute(stmt)).scalars().all()]
-    median_rate = statistics.median(rates) if rates else 0.0
+    rates = []
+    for s in cohort:
+        net = float(s.get("netPay") or s.get("netReceived") or 0.0)
+        hrs = float(s.get("hoursWorked") or 0.0)
+        if hrs > 0:
+            rates.append(net / hrs)
 
     return CityMedianResponse(
-        cohort_too_small=False,
-        worker_count=worker_count,
-        category=category,
-        zone=zone,
-        median_hourly_rate=median_rate
+        cohort_too_small=False, worker_count=distinct_workers,
+        category=category, zone=zone,
+        median_hourly_rate=round(statistics.median(rates), 2) if rates else 0.0,
     )
 
 
-@router.get("/advocate/kpis", summary="Advocate KPI Dashboard (AA1-AA4)", response_model=AdvocateKpisResponse, dependencies=[Depends(verify_jwt)])
-async def get_advocate_kpis(db: AsyncSession = Depends(get_db)):
-    """
-    Aggregate advocate dashboard powering:
-    - AA1: Platform commission trend (weekly averages for line chart)
-    - AA2: Income distribution by city zone (percentile breakdowns for box/violin chart)
-    - AA3: Top flagged anomaly categories this week (attention focus)
-    - AA4: Vulnerability flag list — workers with net income drop > 20% MoM
-    """
+@router.get("/advocate/kpis", summary="Advocate KPI Dashboard (AA1-AA4)",
+            response_model=AdvocateKpisResponse, dependencies=[Depends(verify_jwt)])
+async def get_advocate_kpis():
     today = datetime.date.today()
     twelve_weeks_ago = today - datetime.timedelta(weeks=12)
     thirty_days_ago = today - datetime.timedelta(days=30)
     sixty_days_ago = today - datetime.timedelta(days=60)
     start_of_week = today - datetime.timedelta(days=today.weekday())
 
-    # --- AA1: Platform commission trend (weekly) ---
-    comm_stmt = select(
-        Shift.date,
-        (Shift.platform_deductions / Shift.gross_earned * 100).label("commission_pct")
-    ).where(
-        Shift.date >= twelve_weeks_ago,
-        Shift.gross_earned > 0
-    )
-    comm_res = await db.execute(comm_stmt)
-    df_comm = pd.DataFrame(comm_res.all(), columns=["date", "commission_pct"])
+    shifts = await get_all_shifts(days=90)
+    complaints = await get_all_complaints(days=7)
 
-    trend_dict = {}
-    if not df_comm.empty:
-        df_comm["date"] = pd.to_datetime(df_comm["date"])
-        df_comm["week"] = df_comm["date"].dt.to_period("W").astype(str)
-        agg = df_comm.groupby("week")["commission_pct"].mean()
+    # --- AA1: commission trend per week ---
+    comm_rows = []
+    for s in shifts:
+        d = _parse_date(s)
+        if not d or d < twelve_weeks_ago:
+            continue
+        gross = float(s.get("grossPay") or s.get("grossEarned") or 0.0)
+        deduct = float(s.get("deductions") or s.get("platformDeductions") or 0.0)
+        if gross > 0:
+            comm_rows.append({"date": d, "pct": deduct / gross * 100})
+
+    trend_dict: dict[str, float] = {}
+    if comm_rows:
+        df = pd.DataFrame(comm_rows)
+        df["date"] = pd.to_datetime(df["date"])
+        df["week"] = df["date"].dt.to_period("W").astype(str)
+        agg = df.groupby("week")["pct"].mean()
         trend_dict = {str(k): round(float(v), 2) for k, v in agg.items()}
 
-    # --- AA2: Income distribution by city zone ---
-    zone_stmt = select(Shift.zone, Shift.net_received).where(Shift.date >= thirty_days_ago)
-    zone_res = await db.execute(zone_stmt)
-    df_zones = pd.DataFrame(zone_res.all(), columns=["zone", "earnings"])
+    # --- AA2: income distribution by zone ---
+    zone_income: dict[str, list[float]] = defaultdict(list)
+    for s in shifts:
+        d = _parse_date(s)
+        if not d or d < thirty_days_ago:
+            continue
+        zone = str(s.get("zone") or s.get("cityZoneId") or "Unknown")
+        net = float(s.get("netPay") or s.get("netReceived") or 0.0)
+        zone_income[zone].append(net)
 
-    distribution = {}
-    if not df_zones.empty:
-        for zone, group in df_zones.groupby("zone")["earnings"]:
-            distribution[zone] = ZoneDistribution(
-                p10=round(float(group.quantile(0.10)), 2),
-                p25=round(float(group.quantile(0.25)), 2),
-                p50=round(float(group.quantile(0.50)), 2),
-                p75=round(float(group.quantile(0.75)), 2),
-                p90=round(float(group.quantile(0.90)), 2),
-            )
+    distribution: dict[str, ZoneDistribution] = {}
+    for zone, vals in zone_income.items():
+        if not vals:
+            continue
+        s = pd.Series(vals)
+        distribution[zone] = ZoneDistribution(
+            p10=round(float(s.quantile(0.10)), 2),
+            p25=round(float(s.quantile(0.25)), 2),
+            p50=round(float(s.quantile(0.50)), 2),
+            p75=round(float(s.quantile(0.75)), 2),
+            p90=round(float(s.quantile(0.90)), 2),
+        )
 
-    # --- AA3: Top complaint categories this week ---
-    # We simulate this from real shift data: flag shifts where deduction_pct > 25% as "High Commission"
-    # and hourly_rate < city mean as "Low Hourly Rate" 
-    week_stmt = select(
-        Shift.category,
-        func.count(Shift.id).label("shift_count"),
-        func.avg(Shift.platform_deductions / Shift.gross_earned * 100).label("avg_commission")
-    ).where(
-        Shift.date >= start_of_week,
-        Shift.gross_earned > 0
-    ).group_by(Shift.category).order_by(func.count(Shift.id).desc()).limit(5)
+    # --- AA3: top complaint categories this week ---
+    week_complaints = [
+        c for c in complaints
+        if (d := _parse_date(c)) and d >= start_of_week
+    ]
+    cat_counts: dict[str, int] = defaultdict(int)
+    for c in week_complaints:
+        cat_counts[str(c.get("category") or "Unknown")] += 1
 
-    week_res = await db.execute(week_stmt)
-    top_categories = []
-    for row in week_res.all():
-        top_categories.append({
-            "category": row.category,
-            "shift_count": row.shift_count,
-            "avg_commission_pct": round(float(row.avg_commission or 0), 2)
-        })
+    top_categories = [
+        {"category": cat, "count": cnt, "avg_commission_pct": 0.0}
+        for cat, cnt in sorted(cat_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+    ]
 
-    # --- AA4: Vulnerability flag list (MoM income drop > 20%) ---
-    # Last 30 days vs prior 30 days per worker
-    recent_stmt = select(
-        Shift.worker_id,
-        func.sum(Shift.net_received).label("recent_net")
-    ).where(Shift.date >= thirty_days_ago).group_by(Shift.worker_id)
-    recent_res = await db.execute(recent_stmt)
-    recent_map = {row.worker_id: float(row.recent_net) for row in recent_res.all()}
+    # --- AA4: vulnerability (MoM drop > 20%) ---
+    recent_net: dict[str, float] = defaultdict(float)
+    prior_net: dict[str, float] = defaultdict(float)
+    for s in shifts:
+        d = _parse_date(s)
+        if not d:
+            continue
+        wid = str(s.get("workerId") or s.get("worker_id") or "")
+        net = float(s.get("netPay") or s.get("netReceived") or 0.0)
+        if d >= thirty_days_ago:
+            recent_net[wid] += net
+        elif d >= sixty_days_ago:
+            prior_net[wid] += net
 
-    prior_stmt = select(
-        Shift.worker_id,
-        func.sum(Shift.net_received).label("prior_net")
-    ).where(
-        Shift.date >= sixty_days_ago,
-        Shift.date < thirty_days_ago
-    ).group_by(Shift.worker_id)
-    prior_res = await db.execute(prior_stmt)
-    prior_map = {row.worker_id: float(row.prior_net) for row in prior_res.all()}
-
-    vulnerable_ids = []
-    for worker_id, recent_income in recent_map.items():
-        prior_income = prior_map.get(worker_id, 0)
-        if prior_income > 0:
-            drop_pct = ((prior_income - recent_income) / prior_income) * 100
-            if drop_pct >= 20.0:
-                vulnerable_ids.append(worker_id)
+    vulnerable_ids = [
+        wid for wid, recent in recent_net.items()
+        if (prior := prior_net.get(wid, 0)) > 0
+        and ((prior - recent) / prior * 100) >= 20.0
+    ]
 
     return AdvocateKpisResponse(
         commission_trends=trend_dict,
         income_distribution_percentiles=distribution,
         vulnerable_workers_flagged=vulnerable_ids,
-        top_complaint_categories=top_categories
+        top_complaint_categories=top_categories,
     )
