@@ -1,6 +1,6 @@
 import {
-  Activity, Users, ShieldAlert, Database, CheckCircle, StopCircle,
-  RefreshCw, AlertTriangle, Loader2, Clock3, Check, X
+  ShieldAlert, Database, CheckCircle, StopCircle,
+  AlertTriangle, Loader2, Clock3, Check
 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMemo } from 'react'
@@ -21,14 +21,6 @@ import { useComplaintsQuery } from '@/features/grievance/api'
 import { useShiftsQuery } from '@/features/shifts/api'
 import { useState } from 'react'
 
-export const ADMIN_NAV_ITEMS: NavItem[] = [
-  { icon: <Activity className="h-5 w-5" />,    label: 'System Overview',    href: '/admin/overview',   activeMatch: '/admin/overview' },
-  { icon: <Database className="h-5 w-5" />,    label: 'Platforms & Config', href: '/admin/platforms',  activeMatch: '/admin/platforms' },
-  { icon: <Users className="h-5 w-5" />,       label: 'User Directory',     href: '/admin/users',      activeMatch: '/admin/users' },
-  { icon: <ShieldAlert className="h-5 w-5" />, label: 'Fraud & Audit',      href: '/admin/audit',      activeMatch: '/admin/audit' },
-  { icon: <RefreshCw className="h-5 w-5" />,   label: 'Network Seed',       href: '/admin/seed',       activeMatch: '/admin/seed' },
-]
-
 export default function AdminOverviewPage() {
   const { data: roleData,       isLoading: rLoading } = useRoleRequestsQuery(1, 5)
   const { data: shiftsData,     isLoading: sLoading } = useShiftsQuery({ limit: 1 })
@@ -36,10 +28,6 @@ export default function AdminOverviewPage() {
   const { data: escalatedData }                       = useComplaintsQuery({ status: 'escalated', limit: 1 })
 
   const isLoading = rLoading || sLoading || cLoading
-
-  const pendingCount = useMemo(() =>
-    (roleData?.requests ?? []).filter((r) => r.status === 'pending').length
-  , [roleData])
 
   const pendingTotal  = roleData?.meta?.total  ?? 0
   const totalShifts   = shiftsData?.meta?.total ?? 0
@@ -53,7 +41,7 @@ export default function AdminOverviewPage() {
   const [actionErr, setActionErr] = useState<Record<string, string>>({})
 
   // Derive recent activity from verified/flagged shifts as audit-log proxy
-  const { data: verifiedShifts } = useShiftsQuery({ limit: 4, status: 'verified' as any })
+  const { data: verifiedShifts } = useShiftsQuery({ limit: 4, verificationStatus: 'verified' })
   const recentActivity = useMemo(() => {
     const shifts = verifiedShifts?.shifts ?? []
     return shifts.map((s) => ({

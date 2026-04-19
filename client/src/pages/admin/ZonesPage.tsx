@@ -130,7 +130,7 @@ export default function AdminZonesPage() {
   )
 
   const handleToggleActive = (z: CityZone) => {
-    updateMutation.mutate({ id: z.id, isActive: !z.isActive })
+    updateMutation.mutate({ id: z.id, active: !(z.isActive ?? z.active) })
   }
 
   const openEdit   = (z: CityZone) => { setEditTarget(z); setDialogOpen(true) }
@@ -233,7 +233,7 @@ export default function AdminZonesPage() {
                           {risk === 'Low'      && <Badge className="bg-[#6EE7B7]/20 text-[#6EE7B7] border-none">Low</Badge>}
                         </td>
                         <td className="p-4">
-                          {zone.isActive
+                          {(zone.isActive ?? zone.active)
                             ? <span className="text-sm text-[#6EE7B7]">Active</span>
                             : <span className="text-sm text-[#F87171]">Suspended</span>
                           }
@@ -253,11 +253,11 @@ export default function AdminZonesPage() {
                               onClick={() => handleToggleActive(zone)}
                               disabled={updateMutation.isPending && (updateMutation.variables as any)?.id === zone.id}
                               className={
-                                zone.isActive
+                                (zone.isActive ?? zone.active)
                                   ? 'text-[#94A3B8] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10'
                                   : 'text-[#94A3B8] hover:text-[#6EE7B7] hover:bg-[#6EE7B7]/10'
                               }
-                              title={zone.isActive ? 'Suspend' : 'Activate'}
+                              title={(zone.isActive ?? zone.active) ? 'Suspend' : 'Activate'}
                             >
                               {updateMutation.isPending && (updateMutation.variables as any)?.id === zone.id
                                 ? <Loader2 className="h-4 w-4 animate-spin" />

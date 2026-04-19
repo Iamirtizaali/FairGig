@@ -36,14 +36,6 @@ function statusColors(s: ComplaintStatus) {
   }
 }
 
-function severityColor(s: ComplaintStatus) {
-  switch (s) {
-    case 'escalated': return 'bg-[#F87171]'
-    case 'open':      return 'bg-[#F59E0B]'
-    default:          return 'bg-[#6EE7B7]'
-  }
-}
-
 // Create Cluster Dialog
 function CreateClusterDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [title, setTitle]       = useState('')

@@ -1,6 +1,4 @@
-import { type VariantProps, cva } from 'class-variance-authority'
 import { ShieldCheck, Clock, AlertTriangle, HelpCircle, Loader2 } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 
 // ─── Status type ──────────────────────────────────────────────────────────────

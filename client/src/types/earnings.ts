@@ -27,6 +27,10 @@ export interface Platform {
   slug: string
   logoUrl: string | null
   active: boolean
+  isActive?: boolean
+  color?: string
+  officialCommissionRate?: number | null
+  officialFlatFee?: number | null
   createdAt: string
 }
 
@@ -35,6 +39,9 @@ export interface CityZone {
   city: string
   zone: string
   active: boolean
+  isActive?: boolean
+  country?: string
+  baselineHourlyRate?: number | null
   createdAt: string
 }
 
@@ -153,6 +160,7 @@ export interface ListShiftsParams {
   from?: string             // YYYY-MM-DD
   to?: string               // YYYY-MM-DD
   verificationStatus?: ShiftVerificationStatus
+  status?: ShiftVerificationStatus
 }
 
 export interface PresignRequest {
@@ -176,8 +184,11 @@ export interface VerifyShiftRequest {
 
 export interface CreatePlatformRequest {
   name: string
-  slug: string
+  slug?: string
   logoUrl?: string
+  color?: string
+  officialCommissionRate?: number
+  officialFlatFee?: number
 }
 
 export interface UpdatePlatformRequest {
@@ -185,17 +196,26 @@ export interface UpdatePlatformRequest {
   slug?: string
   logoUrl?: string | null
   active?: boolean
+  isActive?: boolean
+  color?: string
+  officialCommissionRate?: number
+  officialFlatFee?: number
 }
 
 export interface CreateCityZoneRequest {
   city: string
   zone: string
+  country?: string
+  baselineHourlyRate?: number
 }
 
 export interface UpdateCityZoneRequest {
   city?: string
   zone?: string
   active?: boolean
+  isActive?: boolean
+  country?: string
+  baselineHourlyRate?: number
 }
 
 // ─── Response Types ───────────────────────────────────────────────────────────

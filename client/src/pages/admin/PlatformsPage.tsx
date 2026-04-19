@@ -125,7 +125,7 @@ export default function AdminPlatformsPage() {
   )
 
   const handleToggleActive = (p: Platform) => {
-    updateMutation.mutate({ id: p.id, isActive: !p.isActive })
+    updateMutation.mutate({ id: p.id, active: !(p.isActive ?? p.active) })
   }
 
   const openEdit = (p: Platform) => { setEditTarget(p); setDialogOpen(true) }
@@ -228,7 +228,7 @@ export default function AdminPlatformsPage() {
                         </span>
                       </td>
                       <td className="p-4">
-                        {plat.isActive
+                        {(plat.isActive ?? plat.active)
                           ? <Badge className="bg-[#6EE7B7]/10 text-[#6EE7B7] hover:bg-[#6EE7B7]/20 border-none font-medium">Active</Badge>
                           : <Badge className="bg-[#F59E0B]/10 text-[#F59E0B] hover:bg-[#F59E0B]/20 border-none font-medium">Suspended</Badge>
                         }
@@ -248,11 +248,11 @@ export default function AdminPlatformsPage() {
                             onClick={() => handleToggleActive(plat)}
                             disabled={updateMutation.isPending && (updateMutation.variables as any)?.id === plat.id}
                             className={
-                              plat.isActive
+                              (plat.isActive ?? plat.active)
                                 ? 'text-[#94A3B8] hover:text-[#F59E0B] hover:bg-[#F59E0B]/10'
                                 : 'text-[#94A3B8] hover:text-[#6EE7B7] hover:bg-[#6EE7B7]/10'
                             }
-                            title={plat.isActive ? 'Suspend' : 'Activate'}
+                            title={(plat.isActive ?? plat.active) ? 'Suspend' : 'Activate'}
                           >
                             {updateMutation.isPending && (updateMutation.variables as any)?.id === plat.id
                               ? <Loader2 className="h-4 w-4 animate-spin" />

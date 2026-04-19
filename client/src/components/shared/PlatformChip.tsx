@@ -1,5 +1,4 @@
 import { cn } from '@/lib/utils'
-import { PLATFORM_COLORS } from '@/lib/recharts-theme'
 
 // ─── Platform metadata ────────────────────────────────────────────────────────
 export const PLATFORM_META: Record<string, { label: string; color: string; bg: string }> = {

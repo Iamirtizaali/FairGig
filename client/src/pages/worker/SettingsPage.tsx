@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Activity, Clock, ShieldCheck, User, Bell, Shield, Database, Trash2, ArrowUpCircle, Loader2, Check, X, Clock3 } from 'lucide-react'
+import { User, Bell, Shield, Database, Trash2, ArrowUpCircle, Loader2, Check, X, Clock3 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -17,7 +17,7 @@ import {
   useCreateRoleRequestMutation,
   extractApiMessage,
 } from '@/features/auth/api'
-import { GIG_CATEGORIES, PAKISTAN_CITIES } from '@/types/auth'
+import { GIG_CATEGORIES } from '@/types/auth'
 import { cn } from '@/lib/utils'
 import { font } from '@/lib/fonts'
 

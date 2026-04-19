@@ -68,8 +68,8 @@ export default function AdminAuditPage() {
   const [statusFilter,  setStatusFilter]  = useState<'all' | 'SUCCESS' | 'WARNING' | 'ERROR'>('all')
 
   // Pull recent verified + flagged shifts as audit events
-  const { data: verifiedData,   isLoading: vLoading } = useShiftsQuery({ limit: 50, status: 'verified' as any })
-  const { data: flaggedData,    isLoading: fLoading }  = useShiftsQuery({ limit: 50, status: 'discrepancy_flagged' as any })
+  const { data: verifiedData,   isLoading: vLoading } = useShiftsQuery({ limit: 50, verificationStatus: 'verified' })
+  const { data: flaggedData,    isLoading: fLoading }  = useShiftsQuery({ limit: 50, verificationStatus: 'discrepancy_flagged' })
   const { data: complaintsData, isLoading: cLoading }  = useComplaintsQuery({ limit: 50 })
 
   const isLoading = vLoading || fLoading || cLoading
