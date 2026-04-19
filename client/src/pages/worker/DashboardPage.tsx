@@ -1,7 +1,6 @@
-import { Activity, Clock, DollarSign, Target, Plus, ShieldCheck, AlertTriangle, Loader2 } from 'lucide-react'
+import { Activity, Clock, DollarSign, Target, Plus, AlertTriangle, Loader2 } from 'lucide-react'
 import { Link } from 'react-router'
 import { motion } from 'framer-motion'
-import { useMemo } from 'react'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { KpiTile } from '@/components/shared/KpiTile'
 import { StatusBadge, type VerificationStatus } from '@/components/shared/StatusBadge'
@@ -11,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { fadeUp, staggerContainer } from '@/lib/motion'
 import { font } from '@/lib/fonts'
 import { useShiftsQuery } from '@/features/shifts/api'
+import { useWorkerSummaryQuery } from '@/features/analytics/api'
 import { useAuthStore } from '@/stores/auth'
 import type { ShiftVerificationStatus } from '@/types/earnings'
 
@@ -28,26 +28,16 @@ function toVerificationStatus(s: ShiftVerificationStatus): VerificationStatus {
 
 export default function WorkerDashboardPage() {
   const user = useAuthStore((s) => s.user)
-  const { data, isLoading, isError } = useShiftsQuery({ page: 1, limit: 4 })
-
-  // Derive KPIs from full summary — backend returns paginated set for dashboard
-  // For richer KPIs we use a separate wider query (capped at backend max of 100)
-  const { data: allData } = useShiftsQuery({ limit: 100 })
-
-  const kpis = useMemo(() => {
-    const shifts = allData?.shifts ?? []
-    const verified = shifts.filter((s) => s.verificationStatus === 'verified')
-    const pending  = shifts.filter((s) => s.verificationStatus === 'pending_review')
-    const flagged  = shifts.filter((s) => s.verificationStatus === 'discrepancy_flagged')
-
-    const verifiedIncome = verified.reduce((sum, s) => sum + Number(s.netPay), 0)
-    const pendingIncome  = pending.reduce((sum, s) => sum + Number(s.netPay), 0)
-    const trustScore     = shifts.length > 0 ? Math.round((verified.length / shifts.length) * 100) : 0
-
-    return { verifiedIncome, pendingIncome, trustScore, disputes: flagged.length }
-  }, [allData])
-
+  
+  // ── 1. Fetch recent shifts for the table (limited to 4) ──
+  const { data, isLoading: shiftsLoading, isError: shiftsError } = useShiftsQuery({ page: 1, limit: 4 })
   const recentShifts = data?.shifts ?? []
+
+  // ── 2. Fetch full macro summary from Analytics Service (FastAPI) ──
+  const { data: summary, isLoading: summaryLoading, isError: summaryError } = useWorkerSummaryQuery()
+
+  const isLoading = shiftsLoading || summaryLoading
+  const isError = shiftsError || summaryError
 
   return (
     <div className="w-full h-full">
@@ -74,30 +64,32 @@ export default function WorkerDashboardPage() {
         >
           <KpiTile
             icon={<DollarSign className="w-5 h-5" />}
-            label="Verified Income"
-            value={kpis.verifiedIncome}
+            label="This Week Earnings"
+            value={summary?.this_week_earnings ?? 0}
             prefix="Rs "
             accentColor="#6EE7B7"
           />
           <KpiTile
             icon={<Clock className="w-5 h-5" />}
-            label="Pending Verification"
-            value={kpis.pendingIncome}
+            label="Average Hourly Rate"
+            value={summary?.average_hourly_rate ? Math.round(summary.average_hourly_rate) : 0}
             prefix="Rs "
+            suffix="/hr"
             accentColor="#F59E0B"
           />
           <KpiTile
             icon={<Target className="w-5 h-5" />}
-            label="Trust Score"
-            value={kpis.trustScore}
+            label="Verification Ratio"
+            value={summary?.verification_percentage ? Math.round(summary.verification_percentage) : 0}
             suffix="%"
             accentColor="#00D4FF"
           />
           <KpiTile
             icon={<Activity className="w-5 h-5" />}
-            label="Active Disputes"
-            value={kpis.disputes}
-            accentColor="#F87171"
+            label="Monthly Total"
+            value={summary?.this_month_earnings ?? 0}
+            prefix="Rs "
+            accentColor="#A78BFA"
           />
         </motion.div>
 
@@ -118,14 +110,14 @@ export default function WorkerDashboardPage() {
           {isLoading && (
             <div className="flex items-center justify-center py-16 gap-3 text-[#94A3B8]">
               <Loader2 className="h-5 w-5 animate-spin text-[#00D4FF]" />
-              <span>Loading shifts…</span>
+              <span>Loading data…</span>
             </div>
           )}
 
           {isError && (
             <div className="flex items-center justify-center py-16 gap-3 text-[#F87171]">
               <AlertTriangle className="h-5 w-5" />
-              <span>Failed to load shifts. Check your connection.</span>
+              <span>Failed to load data. Check your connection.</span>
             </div>
           )}
 
@@ -177,3 +169,4 @@ export default function WorkerDashboardPage() {
     </div>
   )
 }
+

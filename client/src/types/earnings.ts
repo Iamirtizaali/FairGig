@@ -12,7 +12,10 @@ export type ShiftVerificationStatus =
   | 'discrepancy_flagged'
   | 'unverifiable'
 
-export type VerifyDecision = 'confirmed' | 'discrepancy' | 'unverifiable'
+export type VerifyDecision = 'verified' | 'discrepancy_flagged' | 'unverifiable'
+
+/** Alias used in ReviewPage component for clarity */
+export type VerifyShiftDecision = VerifyDecision
 
 export type CsvImportStatus = 'queued' | 'processing' | 'done' | 'failed'
 
@@ -114,6 +117,7 @@ export interface QueueItem {
   currency: string
   verificationStatus: ShiftVerificationStatus
   createdAt: string
+  updatedAt: string
 }
 
 // ─── Request Types ────────────────────────────────────────────────────────────
@@ -166,6 +170,8 @@ export interface VerifyShiftRequest {
   decision: VerifyDecision
   screenshotId?: string
   notes?: string
+  correctedGross?: number
+  correctedNet?: number
 }
 
 export interface CreatePlatformRequest {

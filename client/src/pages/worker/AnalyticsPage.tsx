@@ -1,4 +1,4 @@
-import { Download, TrendingUp, Loader2, AlertTriangle } from 'lucide-react'
+import { Download, TrendingUp, Loader2, AlertTriangle, Activity, ShieldAlert, CheckCircle2 } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { useMemo, useState } from 'react'
 import {
@@ -12,7 +12,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { fadeUp, staggerContainer } from '@/lib/motion'
 import { font } from '@/lib/fonts'
 import { CHART_COLORS, darkGridProps, tooltipStyle, axisStyle } from '@/lib/recharts-theme'
+
+// Hooks
 import { useShiftsQuery } from '@/features/shifts/api'
+import { useWorkerTrendQuery, useWorkerCommissionTrackerQuery } from '@/features/analytics/api'
+import { useAnomalyDetectMutation } from '@/features/anomaly/api'
+import { useAuthStore } from '@/stores/auth'
+
 import type { Shift } from '@/types/earnings'
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
@@ -22,22 +28,8 @@ function daysAgo(n: number) {
   return d.toISOString().slice(0, 10)
 }
 
-// ─── Derivations ──────────────────────────────────────────────────────────────
-function deriveChartData(shifts: Shift[]) {
-  // Daily earnings trend (last 7 days by shiftDate)
-  const dayMap = new Map<string, number>()
-  shifts.forEach((s) => {
-    const key = s.shiftDate.slice(0, 10)
-    dayMap.set(key, (dayMap.get(key) ?? 0) + Number(s.netPay))
-  })
-  const earningsTrend = Array.from(dayMap.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, amount]) => ({
-      date: new Date(date).toLocaleDateString('en-PK', { day: '2-digit', month: 'short' }),
-      amount: Math.round(amount),
-    }))
-
-  // Platform split for donut
+// ─── Local Derivations (for Platform Pie Chart) ──────────────────────────────
+function derivePlatformSplit(shifts: Shift[]) {
   const platformMap = new Map<string, { name: string; value: number }>()
   shifts.forEach((s) => {
     const key = s.platformId
@@ -51,37 +43,61 @@ function deriveChartData(shifts: Shift[]) {
     color: [CHART_COLORS.primary, CHART_COLORS.secondary, CHART_COLORS.warning, CHART_COLORS.danger][i % 4],
   }))
   const totalNet = platformSplit.reduce((sum, p) => sum + p.value, 0)
-
-  // Commission bar from real deduction %
-  const commissionMap = new Map<string, { name: string; grossTotal: number; dedTotal: number }>()
-  shifts.forEach((s) => {
-    const key = s.platformId
-    const existing = commissionMap.get(key) ?? { name: s.platform.name, grossTotal: 0, dedTotal: 0 }
-    existing.grossTotal += Number(s.grossPay)
-    existing.dedTotal   += Number(s.deductions)
-    commissionMap.set(key, existing)
-  })
-  const commissionRates = Array.from(commissionMap.values()).map((p) => ({
-    name: p.name,
-    rate: p.grossTotal > 0 ? Math.round((p.dedTotal / p.grossTotal) * 100) : 0,
-  }))
-
-  return { earningsTrend, platformSplit, totalNet, commissionRates }
+  return { platformSplit, totalNet }
 }
 
 export default function WorkerAnalyticsPage() {
+  const user = useAuthStore((s) => s.user)
   const [from, setFrom]   = useState(daysAgo(30))
   const [to, setTo]       = useState(today())
 
-  const { data, isLoading, isError } = useShiftsQuery({ limit: 100, from, to })
-  const shifts = data?.shifts ?? []
+  // 1. Shift History (for pie chart and anomaly detection payload)
+  const { data: shiftsData, isLoading: shiftsLoading, isError: shiftsError } = useShiftsQuery({ limit: 100, from, to })
+  const shifts = shiftsData?.shifts ?? []
+  
+  // Local pie chart calc
+  const { platformSplit, totalNet } = useMemo(() => derivePlatformSplit(shifts), [shifts])
 
-  const { earningsTrend, platformSplit, totalNet, commissionRates } = useMemo(
-    () => deriveChartData(shifts),
-    [shifts],
-  )
+  // 2. FastAPI Data: Income Trend (12 weeks)
+  const { data: trendData, isLoading: trendLoading } = useWorkerTrendQuery('week')
+  const earningsTrend = trendData?.series ?? []
+  const totalPeriodEarnings = earningsTrend.reduce((s, r) => s + r.earnings, 0)
 
-  const totalPeriodEarnings = earningsTrend.reduce((s, r) => s + r.amount, 0)
+  // 3. FastAPI Data: Commission Tracker (12 weeks per platform)
+  // We query 'Uber' by default just to trigger it—backend returns series for ALL platforms.
+  const { data: commData, isLoading: commLoading } = useWorkerCommissionTrackerQuery('Uber')
+
+  // Transform commission series into latest averages for the bar chart
+  const commissionRates = useMemo(() => {
+    if (!commData?.platform_series) return []
+    return Object.entries(commData.platform_series).map(([platName, series]) => {
+      // average all data points for the bar chart summarizing the last 12 weeks
+      const avg = series.reduce((sum, pt) => sum + pt.earnings, 0) / (series.length || 1)
+      return { name: platName, rate: Math.round(avg) }
+    })
+  }, [commData])
+
+  // 4. FastAPI Data: Anomaly Detection Mutation (Sprint 5)
+  const detectMutation = useAnomalyDetectMutation()
+
+  const handleRunAnomalyScan = () => {
+    if (!user || shifts.length === 0) return
+    detectMutation.mutate({
+      worker_id: user.id,
+      shifts: shifts.map(s => ({
+        date: s.shiftDate.slice(0, 10),
+        platform: s.platform.name,
+        hours_worked: Number(s.hoursWorked),
+        gross_earned: Number(s.grossPay),
+        platform_deductions: Number(s.deductions),
+        net_received: Number(s.netPay)
+      })),
+      options: { z_threshold: 2.5, mom_drop_pct: 20.0 }
+    })
+  }
+
+  const isLoading = shiftsLoading || trendLoading || commLoading
+  const isError = shiftsError
 
   return (
     <div className="w-full h-full">
@@ -91,7 +107,7 @@ export default function WorkerAnalyticsPage() {
           subtext="Deep dive into your income trends, platform comparisons, and commission rates."
           actions={
             <>
-              {/* date range quick filter */}
+              {/* date range quick filter (only applies to pie chart & shift table) */}
               <div className="flex items-center gap-2">
                 <input type="date" value={from} onChange={(e) => setFrom(e.target.value)}
                   className="bg-[#1B1F2C] border border-[#1E293B] text-sm text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-1 focus:ring-[#00D4FF]" />
@@ -126,25 +142,29 @@ export default function WorkerAnalyticsPage() {
             <TabsList className="bg-[#1B1F2C] border border-[#1E293B] p-1 rounded-xl h-auto mb-6">
               <TabsTrigger value="overview" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-[#00D4FF] data-[state=active]:text-[#0A0E1A]">Overview</TabsTrigger>
               <TabsTrigger value="platforms" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-[#00D4FF] data-[state=active]:text-[#0A0E1A]">Platform Comparison</TabsTrigger>
+              <TabsTrigger value="anomalies" className="rounded-lg px-6 py-2.5 data-[state=active]:bg-[#F59E0B] data-[state=active]:text-[#0A0E1A] flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4" /> Anomaly Scan
+              </TabsTrigger>
             </TabsList>
 
+            {/* ── Overview Tab ── */}
             <TabsContent value="overview" className="border-0 p-0 m-0 focus-visible:ring-0">
               <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-                {/* ── Income Trend Chart ── */}
+                {/* ── Income Trend Chart (FastAPI /worker/trend) ── */}
                 <motion.div variants={fadeUp} className="bg-[#1B1F2C] border border-[#1E293B] rounded-2xl p-6 lg:col-span-2">
                   <div className="flex items-center justify-between mb-8">
                     <div>
-                      <h3 className={`text-lg font-bold text-white mb-1 ${font.display}`}>Income Trend</h3>
+                      <h3 className={`text-lg font-bold text-white mb-1 ${font.display}`}>Income Trend (12 Weeks)</h3>
                       {earningsTrend.length > 1 && (
                         <div className="flex items-center gap-2 text-[#6EE7B7]">
                           <TrendingUp className="h-4 w-4" />
-                          <span className="text-sm font-medium">{earningsTrend.length} days of data</span>
+                          <span className="text-sm font-medium">{earningsTrend.length} weeks of data</span>
                         </div>
                       )}
                     </div>
                     <div className="text-right">
-                      <p className="text-sm text-[#94A3B8] mb-1">Total</p>
+                      <p className="text-sm text-[#94A3B8] mb-1">Total (12W)</p>
                       <p className={`text-2xl font-bold text-white ${font.mono}`}>Rs {totalPeriodEarnings.toLocaleString()}</p>
                     </div>
                   </div>
@@ -162,10 +182,10 @@ export default function WorkerAnalyticsPage() {
                             </linearGradient>
                           </defs>
                           <CartesianGrid {...darkGridProps} />
-                          <XAxis dataKey="date" {...axisStyle} />
+                          <XAxis dataKey="label" {...axisStyle} tickFormatter={(v) => v.slice(5)} /> {/* 2026-W14 -> W14 */}
                           <YAxis {...axisStyle} tickFormatter={(v) => `Rs ${v}`} width={80} />
                           <RechartsTooltip {...tooltipStyle as any} />
-                          <Area type="monotone" dataKey="amount" stroke={CHART_COLORS.primary} strokeWidth={3}
+                          <Area type="monotone" dataKey="earnings" stroke={CHART_COLORS.primary} strokeWidth={3}
                             fill="url(#colorIncome)" activeDot={{ r: 8, fill: CHART_COLORS.primary, stroke: '#0A0E1A', strokeWidth: 4 }} />
                         </AreaChart>
                       </ResponsiveContainer>
@@ -173,7 +193,7 @@ export default function WorkerAnalyticsPage() {
                   )}
                 </motion.div>
 
-                {/* ── Platform Split Donut ── */}
+                {/* ── Platform Split Donut (Local Filter) ── */}
                 <motion.div variants={fadeUp} className="bg-[#1B1F2C] border border-[#1E293B] rounded-2xl p-6 flex flex-col">
                   <h3 className={`text-lg font-bold text-white mb-6 ${font.display}`}>Income by Platform</h3>
 
@@ -215,9 +235,17 @@ export default function WorkerAnalyticsPage() {
                   )}
                 </motion.div>
 
-                {/* ── Commission Rates ── */}
+                {/* ── Commission Rates (FastAPI /worker/commission-tracker) ── */}
                 <motion.div variants={fadeUp} className="bg-[#1B1F2C] border border-[#1E293B] rounded-2xl p-6 lg:col-span-3">
-                  <h3 className={`text-lg font-bold text-white mb-6 ${font.display}`}>Effective Commission Rates</h3>
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className={`text-lg font-bold text-white ${font.display}`}>Effective Commission Rates (12W Avg)</h3>
+                    {commData?.trend === 'concerning' && (
+                      <span className="inline-flex flex-row items-center bg-[#F87171]/20 text-[#F87171] text-xs px-2 py-1 rounded-full">
+                        <AlertTriangle className="h-3 w-3 mr-1" /> Spike detected
+                      </span>
+                    )}
+                  </div>
+
                   {commissionRates.length === 0 ? (
                     <div className="h-40 flex items-center justify-center text-[#94A3B8]">No data</div>
                   ) : (
@@ -241,6 +269,7 @@ export default function WorkerAnalyticsPage() {
               </motion.div>
             </TabsContent>
 
+            {/* ── Platform Comparison Tab ── */}
             <TabsContent value="platforms" className="border-0 p-0 m-0 focus-visible:ring-0">
               <div className="bg-[#1B1F2C] border border-[#1E293B] rounded-2xl p-6">
                 <h3 className={`text-lg font-bold text-white mb-4 ${font.display}`}>Platform Breakdown Detail</h3>
@@ -278,6 +307,114 @@ export default function WorkerAnalyticsPage() {
                   </div>
                 )}
               </div>
+            </TabsContent>
+
+            {/* ── Anomaly Scan Tab (FastAPI /detect) ── */}
+            <TabsContent value="anomalies" className="border-0 p-0 m-0 focus-visible:ring-0">
+              <motion.div variants={fadeUp} className="bg-[#1B1F2C] border border-[#1E293B] rounded-2xl p-6">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className={`text-lg font-bold text-white flex items-center gap-2 mb-1 ${font.display}`}>
+                      <ShieldAlert className="h-5 w-5 text-[#F59E0B]" />
+                      Advanced Statistical Scan
+                    </h3>
+                    <p className="text-[#94A3B8] text-sm">
+                      Powered by FairGig's Python Anomaly Engine. Detects hidden spikes in platform 
+                      commissions or drastic drops in hourly pay.
+                    </p>
+                  </div>
+                  <Button 
+                    className="bg-[#00D4FF] hover:bg-[#00D4FF]/80 text-[#0A0E1A] font-bold"
+                    onClick={handleRunAnomalyScan}
+                    disabled={detectMutation.isPending || shifts.length === 0}
+                  >
+                    {detectMutation.isPending ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Scanning...
+                      </>
+                    ) : (
+                      <>
+                        <Activity className="h-4 w-4 mr-2" />
+                        Run Scan Now
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {shifts.length === 0 && (
+                  <div className="text-[#94A3B8] text-sm text-center py-6">
+                    You need to log some shifts before running a scan.
+                  </div>
+                )}
+
+                {/* Scan Results */}
+                {detectMutation.isError && (
+                  <div className="p-4 rounded-xl bg-red-500/10 border border-red-500 text-red-500 text-sm mt-4">
+                    Could not complete the anomaly scan. Either invalid data was submitted or the Analysis service is unavailable.
+                  </div>
+                )}
+
+                {detectMutation.isSuccess && (
+                  <div className="mt-8 space-y-4">
+                    <h4 className="text-white font-medium mb-3">Scan Results</h4>
+                    {detectMutation.data?.status === 'clean' ? (
+                      <div className="p-4 rounded-xl bg-[#6EE7B7]/10 border border-[#6EE7B7]/20 flex items-start gap-4">
+                        <CheckCircle2 className="h-6 w-6 text-[#6EE7B7] mt-0.5" />
+                        <div>
+                          <p className="text-[#6EE7B7] font-medium mb-1">Your income patterns look healthy.</p>
+                          <p className="text-[#94A3B8] text-sm">
+                            Analysed {detectMutation.data.summary.shifts_analysed} shifts across weekly and monthly windows. 
+                            We found no significant commission spikes or abnormal pay drops versus your 60-day baseline.
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        {detectMutation.data?.anomalies.map((anom, idx) => (
+                          <div key={idx} className="p-5 rounded-xl bg-[#F87171]/10 border border-[#F87171] relative overflow-hidden">
+                            <div className="absolute top-0 right-0 bg-[#F87171] text-xs font-bold text-white px-3 py-1 rounded-bl-lg uppercase">
+                              {anom.severity} Risk
+                            </div>
+                            <h5 className="text-[#F87171] font-bold mb-2 flex items-center gap-2">
+                              <AlertTriangle className="h-5 w-5" /> 
+                              {anom.kind.replace(/_/g, ' ').toUpperCase()}
+                            </h5>
+                            <p className="text-white mb-4">{anom.explanation}</p>
+                            
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-4 border-t border-[#F87171]/20">
+                              <div>
+                                <p className="text-[#94A3B8] text-xs uppercase mb-1">Window</p>
+                                <p className="text-[#F1F5F9] text-sm">{anom.window}</p>
+                              </div>
+                              <div>
+                                <p className="text-[#94A3B8] text-xs uppercase mb-1">Metric</p>
+                                <p className="text-[#F1F5F9] text-sm font-mono">{anom.metric}</p>
+                              </div>
+                              <div>
+                                <p className="text-[#94A3B8] text-xs uppercase mb-1">Baseline Mean</p>
+                                <p className="text-[#F1F5F9] text-sm font-mono">
+                                  {anom.metric.includes('pct') 
+                                    ? `${(anom.baseline_mean * 100).toFixed(1)}%` 
+                                    : `Rs ${anom.baseline_mean.toLocaleString()}`}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[#94A3B8] text-xs uppercase mb-1">Observed Value</p>
+                                <p className="text-white font-bold text-sm font-mono">
+                                  {anom.metric.includes('pct') 
+                                    ? `${(anom.observed * 100).toFixed(1)}%` 
+                                    : `Rs ${anom.observed.toLocaleString()}`}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </motion.div>
             </TabsContent>
           </Tabs>
         )}
