@@ -5,6 +5,7 @@ pydantic-settings
 python-jose[cryptography]
 httpx
 structlog
+sentry-sdk
 pytest
 pytest-asyncio
 numpy

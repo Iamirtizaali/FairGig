@@ -1,0 +1,35 @@
+name: Sync Analytics Service to Hugging Face
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "apps/analytics-service/**"
+      - "scripts/sync_hf_space.py"
+      - ".github/workflows/sync-analytics-to-hf.yml"
+  workflow_dispatch:
+
+jobs:
+  sync-analytics:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Hugging Face Hub client
+        run: python -m pip install --upgrade pip huggingface_hub
+
+      - name: Sync analytics service
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          python scripts/sync_hf_space.py \
+            --repo-id ferozxdev/fairgig-analytics \
+            --service-dir apps/analytics-service \
+            --commit-message "Sync analytics service from GitHub ${{ github.sha }}"

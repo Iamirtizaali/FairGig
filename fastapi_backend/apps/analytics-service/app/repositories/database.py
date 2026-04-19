@@ -1,28 +1,10 @@
-"""
-Analytics Data Layer — dual-mode (shared Postgres OR local SQLite).
-
-When DATABASE_URL points at Postgres, we read Node-owned tables:
-  - earnings.shifts (workerId, shiftDate, platformId, cityZoneId, hoursWorked,
-                     grossPay, deductions, netPay, verificationStatus)
-  - earnings.platforms, earnings.city_zones
-  - grievance.complaints (authorId, category, platform, createdAt)
-  - auth.users (id, categories[], city_zone_id)
-
-On startup we create `analytics_views.shifts_flat` and `analytics_views.complaints_flat`
-views that flatten these into the simple column shape the routes already expect
-(worker_id, date, platform, category, zone, hours_worked, gross_earned,
- platform_deductions, net_received, is_verified). This keeps all query code
-dialect-agnostic and avoids touching the Node Prisma schemas.
-
-On SQLite (judge/demo/dev) we seed the same flat shape directly.
-"""
 import datetime
 import logging
 import random
+from typing import Any
 
-from sqlalchemy import (
-    Boolean, Column, Date, Float, Integer, String, select, text,
-)
+import httpx
+from sqlalchemy import Boolean, Column, Date, Float, Integer, String, delete, select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -30,31 +12,15 @@ from app.config import settings
 
 logger = logging.getLogger("analytics.db")
 
-engine = create_async_engine(settings.DATABASE_URL, future=True)
+engine = create_async_engine(settings.DATABASE_URL)
 AsyncSessionLocal = sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 Base = declarative_base()
 
-IS_POSTGRES = engine.url.get_backend_name().startswith("postgres")
-
-# When backed by real Postgres, the flattened views live under analytics_views.
-# When backed by SQLite, the same table names live in the default schema.
-FLAT_SCHEMA = "analytics_views" if IS_POSTGRES else None
-
-
-def _table_args(schema):
-    return ({"schema": schema},) if schema else ()
-
 
 class Shift(Base):
-    """
-    Flat shift row.
-    - On Postgres this is the `analytics_views.shifts_flat` view over earnings.shifts.
-    - On SQLite it's a real seeded table.
-    """
-    __tablename__ = "shifts_flat" if IS_POSTGRES else "shifts"
-    __table_args__ = _table_args(FLAT_SCHEMA)
+    __tablename__ = "shifts"
 
-    id = Column(String, primary_key=True, index=True) if IS_POSTGRES else Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     worker_id = Column(String, index=True)
     date = Column(Date, index=True)
     platform = Column(String, index=True)
@@ -68,15 +34,9 @@ class Shift(Base):
 
 
 class Complaint(Base):
-    """
-    Flat complaint row.
-    - On Postgres this is `analytics_views.complaints_flat` over grievance.complaints.
-    - On SQLite it's seeded directly.
-    """
-    __tablename__ = "complaints_flat" if IS_POSTGRES else "complaints"
-    __table_args__ = _table_args(FLAT_SCHEMA)
+    __tablename__ = "complaints"
 
-    id = Column(String, primary_key=True, index=True) if IS_POSTGRES else Column(Integer, primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
     worker_id = Column(String, index=True)
     category = Column(String, index=True)
     created_at = Column(Date, index=True)
@@ -84,12 +44,7 @@ class Complaint(Base):
 
 
 class VulnerabilityFlag(Base):
-    """
-    Our owned materialised-view-like table, written nightly by
-    app.core.jobs.run_vulnerability_job (MoM income drop > threshold).
-    """
     __tablename__ = "vulnerability_flags"
-    __table_args__ = _table_args(FLAT_SCHEMA)
 
     worker_id = Column(String, primary_key=True)
     zone = Column(String)
@@ -100,93 +55,20 @@ class VulnerabilityFlag(Base):
     computed_at = Column(Date)
 
 
-# ─── Session helper ──────────────────────────────────────────────────────────
-
 async def get_db():
     async with AsyncSessionLocal() as db:
         yield db
 
 
-# ─── Postgres view DDL ───────────────────────────────────────────────────────
-
-_SHIFTS_FLAT_VIEW_SQL = """
-CREATE OR REPLACE VIEW analytics_views.shifts_flat AS
-SELECT
-    s."id"                                             AS id,
-    s."workerId"                                       AS worker_id,
-    s."shiftDate"                                      AS date,
-    p."slug"                                           AS platform,
-    COALESCE(
-        (SELECT c FROM unnest(u."categories") AS c LIMIT 1),
-        'Unknown'
-    )                                                  AS category,
-    COALESCE(cz."zone", 'Unknown')                     AS zone,
-    s."hoursWorked"::float                             AS hours_worked,
-    s."grossPay"::float                                AS gross_earned,
-    s."deductions"::float                              AS platform_deductions,
-    s."netPay"::float                                  AS net_received,
-    (s."verificationStatus"::text = 'verified')        AS is_verified
-FROM earnings."shifts" s
-LEFT JOIN earnings."platforms"    p  ON p."id"  = s."platformId"
-LEFT JOIN earnings."city_zones"   cz ON cz."id" = s."cityZoneId"
-LEFT JOIN auth."users"            u  ON u."id"::text = s."workerId"
-WHERE s."deletedAt" IS NULL;
-"""
-
-_COMPLAINTS_FLAT_VIEW_SQL = """
-CREATE OR REPLACE VIEW analytics_views.complaints_flat AS
-SELECT
-    c."id"                             AS id,
-    c."authorId"                       AS worker_id,
-    c."category"                       AS category,
-    c."createdAt"::date                AS created_at,
-    COALESCE(cz."zone", 'Unknown')     AS zone
-FROM grievance."complaints" c
-LEFT JOIN auth."users"          u  ON u."id"::text = c."authorId"
-LEFT JOIN earnings."city_zones" cz ON cz."id"      = u."city_zone_id"
-WHERE c."deletedAt" IS NULL;
-"""
-
-
-async def init_db():
-    """
-    Dialect-aware init:
-    - Postgres: ensure analytics_views schema + vulnerability_flags table +
-      flattening views exist. Do NOT touch Node's tables.
-    - SQLite: create all tables and seed demo data.
-    """
-    if IS_POSTGRES:
-        async with engine.begin() as conn:
-            await conn.execute(text("CREATE SCHEMA IF NOT EXISTS analytics_views"))
-            # Create only our owned materialised-view-like table
-            await conn.run_sync(
-                lambda sc: VulnerabilityFlag.__table__.create(sc, checkfirst=True)
-            )
-            # Create the flattening views. These require Node-owned tables to
-            # exist. If Node hasn't migrated yet, log and keep running — the
-            # views will be retried on next startup.
-            try:
-                await conn.execute(text(_SHIFTS_FLAT_VIEW_SQL))
-                await conn.execute(text(_COMPLAINTS_FLAT_VIEW_SQL))
-            except Exception as exc:  # noqa: BLE001
-                logger.warning(
-                    "analytics_views flattening views not created yet "
-                    "(Node schemas may not exist yet): %s", exc,
-                )
-        return
-
-    # ── SQLite path: create flat tables and seed demo data ──────────────────
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with AsyncSessionLocal() as session:
-        existing = await session.execute(select(Shift).limit(1))
-        if not existing.scalars().first():
-            await _seed_sqlite_demo_data(session)
+def _parse_date(value: Any) -> datetime.date:
+    if isinstance(value, datetime.date):
+        return value
+    if isinstance(value, str):
+        return datetime.date.fromisoformat(value[:10])
+    raise ValueError(f"Unsupported date value: {value!r}")
 
 
 async def _seed_sqlite_demo_data(session: AsyncSession):
-    """Seed 100 workers × 90 shifts + a few complaints for local demos."""
     zones = ["Downtown", "Northside", "Westend"]
     categories = ["Bike Rider", "Delivery", "Cleaner"]
     platforms = ["Uber", "Careem", "Foodpanda"]
@@ -202,7 +84,7 @@ async def _seed_sqlite_demo_data(session: AsyncSession):
     ]
 
     base_date = datetime.date.today() - datetime.timedelta(days=120)
-    shifts = []
+    shifts: list[Shift] = []
     for worker in workers:
         base_comm = random.uniform(0.10, 0.25)
         start_offset = random.randint(0, 30)
@@ -230,22 +112,138 @@ async def _seed_sqlite_demo_data(session: AsyncSession):
                     is_verified=random.random() < 0.90,
                 )
             )
+
     session.add_all(shifts)
     await session.commit()
 
     complaint_categories = [
-        "Deduction Dispute", "Late Payment", "App Glitch",
-        "Unfair Rating", "Missing Bonus", "Incorrect Hours",
+        "Deduction Dispute",
+        "Late Payment",
+        "App Glitch",
+        "Unfair Rating",
+        "Missing Bonus",
+        "Incorrect Hours",
     ]
     c_base = datetime.date.today() - datetime.timedelta(days=30)
-    complaints = []
+    complaints: list[Complaint] = []
     for i in range(1, 101):
         for _ in range(random.randint(1, 4)):
-            complaints.append(Complaint(
-                worker_id=f"W-{i}",
-                category=random.choice(complaint_categories),
-                created_at=c_base + datetime.timedelta(days=random.randint(0, 29)),
-                zone=random.choice(zones),
-            ))
+            complaints.append(
+                Complaint(
+                    worker_id=f"W-{i}",
+                    category=random.choice(complaint_categories),
+                    created_at=c_base + datetime.timedelta(days=random.randint(0, 29)),
+                    zone=random.choice(zones),
+                )
+            )
     session.add_all(complaints)
     await session.commit()
+
+
+async def _fetch_supabase_rows(table_name: str) -> list[dict[str, Any]]:
+    if not settings.SUPABASE_URL or not settings.SUPABASE_SERVICE_ROLE_KEY:
+        return []
+
+    url = f"{settings.SUPABASE_URL.rstrip('/')}/rest/v1/{table_name}"
+    headers = {
+        "apikey": settings.SUPABASE_SERVICE_ROLE_KEY,
+        "Authorization": f"Bearer {settings.SUPABASE_SERVICE_ROLE_KEY}",
+        "Accept": "application/json",
+    }
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        response = await client.get(url, headers=headers, params={"select": "*", "limit": 10000})
+        response.raise_for_status()
+        payload = response.json()
+        return payload if isinstance(payload, list) else []
+
+
+async def _sync_from_supabase(session: AsyncSession):
+    shifts_rows = await _fetch_supabase_rows("shifts")
+    complaints_rows = await _fetch_supabase_rows("complaints")
+    vulnerability_rows = await _fetch_supabase_rows("vulnerability_flags")
+
+    if not shifts_rows:
+        raise RuntimeError("Supabase sync returned no shift rows")
+
+    await session.execute(delete(Shift))
+    await session.execute(delete(Complaint))
+    await session.execute(delete(VulnerabilityFlag))
+
+    session.add_all(
+        Shift(
+            id=int(row["id"]),
+            worker_id=str(row["worker_id"]),
+            date=_parse_date(row["date"]),
+            platform=row.get("platform", "Unknown"),
+            category=row.get("category", "Unknown"),
+            zone=row.get("zone", "Unknown"),
+            hours_worked=float(row.get("hours_worked", 0.0)),
+            gross_earned=float(row.get("gross_earned", 0.0)),
+            platform_deductions=float(row.get("platform_deductions", 0.0)),
+            net_received=float(row.get("net_received", 0.0)),
+            is_verified=bool(row.get("is_verified", True)),
+        )
+        for row in shifts_rows
+    )
+
+    session.add_all(
+        Complaint(
+            id=int(row["id"]),
+            worker_id=str(row["worker_id"]),
+            category=row.get("category", "Unknown"),
+            created_at=_parse_date(row["created_at"]),
+            zone=row.get("zone", "Unknown"),
+        )
+        for row in complaints_rows
+    )
+
+    session.add_all(
+        VulnerabilityFlag(
+            worker_id=str(row["worker_id"]),
+            zone=row.get("zone", "Unknown"),
+            category=row.get("category", "Unknown"),
+            prior_month_income=float(row.get("prior_month_income", 0.0)),
+            current_month_income=float(row.get("current_month_income", 0.0)),
+            drop_pct=float(row.get("drop_pct", 0.0)),
+            computed_at=_parse_date(row["computed_at"]),
+        )
+        for row in vulnerability_rows
+    )
+
+    await session.commit()
+    logger.info(
+        "Supabase sync complete: shifts=%s complaints=%s vulnerability=%s",
+        len(shifts_rows),
+        len(complaints_rows),
+        len(vulnerability_rows),
+    )
+
+
+async def init_db():
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+
+    async with AsyncSessionLocal() as session:
+        if settings.SYNC_FROM_SUPABASE and settings.SUPABASE_URL and settings.SUPABASE_SERVICE_ROLE_KEY:
+            try:
+                await _sync_from_supabase(session)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("Supabase sync failed; falling back to local seed: %s", exc)
+                await session.execute(delete(Shift))
+                await session.execute(delete(Complaint))
+                await session.execute(delete(VulnerabilityFlag))
+                await session.commit()
+                if not (await session.execute(select(Shift).limit(1))).scalars().first():
+                    await _seed_sqlite_demo_data(session)
+        else:
+            existing = await session.execute(select(Shift).limit(1))
+            if not existing.scalars().first():
+                await _seed_sqlite_demo_data(session)
+
+    from app.core.jobs import run_vulnerability_job
+
+    try:
+        await run_vulnerability_job()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("Vulnerability job failed during init: %s", exc)

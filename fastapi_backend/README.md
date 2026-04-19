@@ -2,6 +2,26 @@
 
 This is the backend for FairGig built with FastAPI.
 
+## GitHub to Hugging Face Sync
+
+This repository includes GitHub Actions workflows that sync the two FastAPI services to Hugging Face Spaces on every push to `main`:
+
+- [`.github/workflows/sync-anomaly-to-hf.yml`](.github/workflows/sync-anomaly-to-hf.yml)
+- [`.github/workflows/sync-analytics-to-hf.yml`](.github/workflows/sync-analytics-to-hf.yml)
+
+Required GitHub secret:
+
+- `HF_TOKEN` - a Hugging Face User Access Token with write access to the target Spaces
+
+The workflows upload only the runtime files from each service folder:
+
+- `app/**`
+- `Dockerfile`
+- `requirements.txt`
+- `README.md`
+
+If you rename the Hugging Face Spaces, update the `--repo-id` values inside [scripts/sync_hf_space.py](scripts/sync_hf_space.py).
+
 ## Setup
 
 1. Create a virtual environment:
