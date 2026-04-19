@@ -25,7 +25,10 @@ export async function detectAnomalies(
   try {
     const res = await fetch(`${env.ANOMALY_SERVICE_URL}/detect`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        'X-API-Key': env.ANOMALY_API_KEY,
+      },
       body: JSON.stringify({
         worker_id: workerId,
         shifts,

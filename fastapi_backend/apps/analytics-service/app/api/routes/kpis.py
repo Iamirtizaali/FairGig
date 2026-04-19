@@ -39,9 +39,8 @@ async def get_city_median(category: str, zone: str, db: AsyncSession = Depends(g
         Shift.is_verified == True,
         Shift.hours_worked > 0
     )
-    rates = [(await db.execute(stmt)).scalars().all()]
-    flat_rates = [float(r) for r in rates[0]]
-    median_rate = statistics.median(flat_rates) if flat_rates else 0.0
+    rates = [float(r) for r in (await db.execute(stmt)).scalars().all()]
+    median_rate = statistics.median(rates) if rates else 0.0
 
     return CityMedianResponse(
         cohort_too_small=False,

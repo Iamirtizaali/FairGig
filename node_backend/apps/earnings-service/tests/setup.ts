@@ -8,4 +8,5 @@ process.env.UPSTASH_REDIS_REST_TOKEN = 'test-token';
 process.env.SUPABASE_URL = 'https://test.supabase.co';
 process.env.SUPABASE_SERVICE_ROLE_KEY = 'test-key';
 process.env.SUPABASE_BUCKET = 'fairgig';
-process.env.ANOMALY_SERVICE_URL = 'http://localhost:8000';
+process.env.ANOMALY_SERVICE_URL = 'http://localhost:5002';
+process.env.ANOMALY_API_KEY = 'test-anomaly-key';
