@@ -110,6 +110,54 @@ export interface RoleRequestsListData {
   requests: RoleRequestResponseData['roleRequest'][]
 }
 
+// ─── Admin user directory ─────────────────────────────────────────────────────
+
+/** Query params for GET /auth/v1/admin/users */
+export interface ListAdminUsersParams {
+  page?: number
+  limit?: number
+  role?: UserRole
+  status?: UserStatus
+  search?: string
+}
+
+/** Data payload for GET /auth/v1/admin/users */
+export interface AdminUsersListData {
+  users: AuthUser[]
+}
+
+// ─── Admin audit log ──────────────────────────────────────────────────────────
+
+/** One audit event row — shape matches Prisma `auth.audit_events` record */
+export interface AuditEvent {
+  id:        string
+  actorId:   string | null
+  actorRole: UserRole | null
+  action:    string
+  entity:    string
+  entityId:  string
+  diff:      Record<string, unknown>
+  ip:        string | null
+  ua:        string | null
+  createdAt: string
+}
+
+/** Query params for GET /auth/v1/admin/audit */
+export interface ListAdminAuditParams {
+  page?:    number
+  limit?:   number
+  actorId?: string
+  action?:  string
+  entity?:  string
+  from?:    string
+  to?:      string
+}
+
+/** Data payload for GET /auth/v1/admin/audit */
+export interface AdminAuditListData {
+  events: AuditEvent[]
+}
+
 // ─── Auth Form Types ──────────────────────────────────────────────────────────
 
 

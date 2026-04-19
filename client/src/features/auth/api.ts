@@ -17,12 +17,18 @@ import type {
   MeResponseData,
   RoleRequestResponseData,
   RoleRequestsListData,
+  ListAdminUsersParams,
+  AdminUsersListData,
+  ListAdminAuditParams,
+  AdminAuditListData,
 } from '@/types/auth'
 
 // ─── Keys ─────────────────────────────────────────────────────────────────────
 export const authKeys = {
   me: ['auth', 'me'] as const,
   roleRequests: (page: number, limit: number) => ['auth', 'role-requests', page, limit] as const,
+  adminUsers:   (params: ListAdminUsersParams)  => ['auth', 'admin-users', params]  as const,
+  adminAudit:   (params: ListAdminAuditParams)  => ['auth', 'admin-audit', params]  as const,
 }
 
 // ─── Fetch current user (GET /auth/v1/me) ─────────────────────────────────────
@@ -242,6 +248,7 @@ export function useRejectRoleRequestMutation() {
 
 // ─── Update user status (PATCH /auth/v1/admin/users/:id/status) — admin ───────
 export function useUpdateUserStatusMutation() {
+  const queryClient = useQueryClient()
   return useMutation({
     mutationFn: async ({ id, ...payload }: { id: string } & UpdateUserStatusRequest) => {
       const res = await apiClient.patch<BackendResponse<{ user: unknown }>>(
@@ -249,6 +256,45 @@ export function useUpdateUserStatusMutation() {
         payload,
       )
       return res.data.data
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['auth', 'admin-users'] })
+    },
+  })
+}
+
+// ─── List users (GET /auth/v1/admin/users) — admin only ───────────────────────
+export function useAdminUsersQuery(params: ListAdminUsersParams = {}) {
+  const { page = 1, limit = 20, role, status, search } = params
+  return useQuery({
+    queryKey: authKeys.adminUsers({ page, limit, role, status, search }),
+    queryFn: async () => {
+      const res = await apiClient.get<BackendResponse<AdminUsersListData>>(
+        '/auth/v1/admin/users',
+        { params: { page, limit, role, status, search } },
+      )
+      return {
+        users: res.data.data!.users,
+        meta:  res.data.meta,
+      }
+    },
+  })
+}
+
+// ─── List audit events (GET /auth/v1/admin/audit) — admin only ────────────────
+export function useAdminAuditQuery(params: ListAdminAuditParams = {}) {
+  const { page = 1, limit = 50, actorId, action, entity, from, to } = params
+  return useQuery({
+    queryKey: authKeys.adminAudit({ page, limit, actorId, action, entity, from, to }),
+    queryFn: async () => {
+      const res = await apiClient.get<BackendResponse<AdminAuditListData>>(
+        '/auth/v1/admin/audit',
+        { params: { page, limit, actorId, action, entity, from, to } },
+      )
+      return {
+        events: res.data.data!.events,
+        meta:   res.data.meta,
+      }
     },
   })
 }

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react'
-import { Search, Filter, Download, Terminal, ChevronRight, Activity, Loader2 } from 'lucide-react'
+import { Search, Filter, Download, Terminal, ChevronRight, Activity, Loader2, RefreshCw } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { PageHeader } from '@/components/shared/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -7,89 +7,66 @@ import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { fadeUp, staggerContainer } from '@/lib/motion'
 import { font } from '@/lib/fonts'
-import { useShiftsQuery } from '@/features/shifts/api'
-import { useComplaintsQuery } from '@/features/grievance/api'
-import type { Shift } from '@/types/earnings'
-import type { ComplaintSummary } from '@/types/grievance'
+import { useAdminAuditQuery } from '@/features/auth/api'
+import type { AuditEvent } from '@/types/auth'
 
-// ─── Unified audit event ─────────────────────────────────────────────────────
+const PAGE_SIZE = 50
+
+// ─── Unified audit row (row-level UI shape) ──────────────────────────────────
 interface AuditEntry {
   id:        string
   timestamp: string
   actor:     string
   action:    string
+  entity:    string
   status:    'SUCCESS' | 'WARNING' | 'ERROR'
   details:   string
 }
 
-function shiftToEntry(s: Shift): AuditEntry {
-  const decision = s.verificationStatus === 'verified' ? 'Approved' : 'Flagged'
-  const status   = s.verificationStatus === 'verified' ? 'SUCCESS' : 'WARNING'
-  return {
-    id:        `SH-${s.id.slice(0, 6)}`,
-    timestamp: s.updatedAt,
-    actor:     'verifier',
-    action:    `SHIFT_${decision.toUpperCase()}`,
-    status,
-    details:   JSON.stringify({
-      shiftId:      s.id.slice(0, 12),
-      platform:     s.platform.name,
-      gross:        s.grossPay,
-      status:       s.verificationStatus,
-    }),
-  }
+// Classify a backend action string into a visual severity.
+// Verbs like "created/approved/verified" → SUCCESS,
+// "rejected/deleted/frozen/flagged" → WARNING,
+// "error/failed" → ERROR; anything else → SUCCESS.
+function classify(action: string): AuditEntry['status'] {
+  const a = action.toLowerCase()
+  if (/error|fail/.test(a)) return 'ERROR'
+  if (/reject|delete|froze|frozen|flag|escalat|revoke|hidden/.test(a)) return 'WARNING'
+  return 'SUCCESS'
 }
 
-function complaintToEntry(c: ComplaintSummary): AuditEntry {
-  const statusMap: Record<string, 'SUCCESS' | 'WARNING' | 'ERROR'> = {
-    resolved:     'SUCCESS',
-    open:         'WARNING',
-    under_review: 'WARNING',
-    escalated:    'ERROR',
-    hidden:       'WARNING',
-  }
+function eventToEntry(e: AuditEvent): AuditEntry {
   return {
-    id:        `CP-${c.id.slice(0, 6)}`,
-    timestamp: c.updatedAt ?? c.createdAt,
-    actor:     'advocate',
-    action:    `COMPLAINT_${c.status.toUpperCase().replace('_', '_')}`,
-    status:    statusMap[c.status] ?? 'WARNING',
-    details:   JSON.stringify({
-      complaintId: c.id.slice(0, 12),
-      title:       c.title.slice(0, 40),
-      platform:    c.platform,
-      status:      c.status,
-    }),
+    id:        e.id,
+    timestamp: e.createdAt,
+    actor:     e.actorRole ? `${e.actorRole}:${(e.actorId ?? '—').slice(0, 8)}` : (e.actorId ? e.actorId.slice(0, 8) : 'system'),
+    action:    e.action,
+    entity:    `${e.entity}:${e.entityId.slice(0, 8)}`,
+    status:    classify(e.action),
+    details:   JSON.stringify(e.diff ?? {}),
   }
 }
 
 export default function AdminAuditPage() {
-  const [search,        setSearch]        = useState('')
-  const [statusFilter,  setStatusFilter]  = useState<'all' | 'SUCCESS' | 'WARNING' | 'ERROR'>('all')
+  const [search,       setSearch]       = useState('')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'SUCCESS' | 'WARNING' | 'ERROR'>('all')
+  const [page,         setPage]         = useState(1)
 
-  // Pull recent verified + flagged shifts as audit events
-  const { data: verifiedData,   isLoading: vLoading } = useShiftsQuery({ limit: 50, verificationStatus: 'verified' })
-  const { data: flaggedData,    isLoading: fLoading }  = useShiftsQuery({ limit: 50, verificationStatus: 'discrepancy_flagged' })
-  const { data: complaintsData, isLoading: cLoading }  = useComplaintsQuery({ limit: 50 })
+  const { data, isLoading, isError, refetch } = useAdminAuditQuery({ page, limit: PAGE_SIZE })
 
-  const isLoading = vLoading || fLoading || cLoading
-
-  // Merge → sort by timestamp desc
-  const allEntries = useMemo<AuditEntry[]>(() => {
-    const shiftEntries = [
-      ...(verifiedData?.shifts ?? []).map(shiftToEntry),
-      ...(flaggedData?.shifts  ?? []).map(shiftToEntry),
-    ]
-    const complaintEntries = (complaintsData?.complaints ?? []).map(complaintToEntry)
-    return [...shiftEntries, ...complaintEntries]
-      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-  }, [verifiedData, flaggedData, complaintsData])
+  const allEntries = useMemo<AuditEntry[]>(
+    () => (data?.events ?? []).map(eventToEntry),
+    [data],
+  )
 
   const filtered = useMemo(() =>
     allEntries.filter((e) => {
       const matchStatus = statusFilter === 'all' || e.status === statusFilter
       const q = search.toLowerCase()
-      const matchSearch = !q || e.action.toLowerCase().includes(q) || e.actor.toLowerCase().includes(q) || e.id.toLowerCase().includes(q)
+      const matchSearch = !q
+        || e.action.toLowerCase().includes(q)
+        || e.actor.toLowerCase().includes(q)
+        || e.entity.toLowerCase().includes(q)
+        || e.id.toLowerCase().includes(q)
       return matchStatus && matchSearch
     })
   , [allEntries, statusFilter, search])
@@ -106,6 +83,24 @@ export default function AdminAuditPage() {
     ERROR:   'bg-[#F87171] shadow-[0_0_8px_#F87171]',
   }[s])
 
+  const total      = data?.meta?.total ?? 0
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+
+  function exportCsv() {
+    const rows = [
+      ['id', 'timestamp', 'actor', 'action', 'entity', 'status', 'details'],
+      ...filtered.map((e) => [e.id, e.timestamp, e.actor, e.action, e.entity, e.status, e.details.replace(/"/g, '""')]),
+    ]
+    const csv = rows.map((r) => r.map((c) => `"${String(c)}"`).join(',')).join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url  = URL.createObjectURL(blob)
+    const a    = document.createElement('a')
+    a.href = url
+    a.download = `fairgig-audit-p${page}.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }
+
   return (
     <div className="w-full h-full">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -113,7 +108,12 @@ export default function AdminAuditPage() {
           heading="System Audit Log"
           subtext="Chronological record of every critical state change, actor intervention, and automated systemic action."
           actions={
-            <Button variant="outline" className="border-[#1E293B] text-white hover:bg-white/5">
+            <Button
+              variant="outline"
+              onClick={exportCsv}
+              disabled={filtered.length === 0}
+              className="border-[#1E293B] text-white hover:bg-white/5 disabled:opacity-40"
+            >
               <Download className="h-4 w-4 mr-2" />
               Export CSV
             </Button>
@@ -126,7 +126,7 @@ export default function AdminAuditPage() {
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-[#94A3B8]" />
               <Input
-                placeholder="Search by action, actor, or ID…"
+                placeholder="Search by action, actor, entity, or ID…"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9 bg-[#1B1F2C] border-[#1E293B] text-white focus-visible:ring-[#00D4FF]"
@@ -136,7 +136,7 @@ export default function AdminAuditPage() {
               <Button variant="outline" className="border-[#1E293B] text-[#94A3B8] hover:text-white hover:bg-white/5 shrink-0 bg-[#0A0E1A]">
                 <Terminal className="h-4 w-4 mr-2" />Advanced Query
               </Button>
-              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
+              <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as 'all' | 'SUCCESS' | 'WARNING' | 'ERROR')}>
                 <SelectTrigger className="w-36 bg-[#1B1F2C] border-[#1E293B] text-white h-9 text-sm focus:ring-[#00D4FF]/50">
                   <Filter className="h-3.5 w-3.5 mr-1.5 text-[#94A3B8]" />
                   <SelectValue />
@@ -159,20 +159,29 @@ export default function AdminAuditPage() {
               </div>
             )}
 
-            {!isLoading && (
+            {isError && !isLoading && (
+              <div className="flex flex-col items-center gap-4 py-20 text-center">
+                <p className="text-[#F87171]">Failed to load audit log.</p>
+                <Button onClick={() => refetch()} variant="outline" className="border-[#1E293B] text-white hover:bg-white/5">
+                  <RefreshCw className="h-4 w-4 mr-2" /> Retry
+                </Button>
+              </div>
+            )}
+
+            {!isLoading && !isError && (
               <div className="min-w-[900px] text-sm">
                 {/* Header */}
                 <div className={`grid grid-cols-12 gap-4 px-4 py-3 text-[#5A6B8B] uppercase tracking-wider font-semibold text-xs border-b border-[#1E293B]/50 ${font.mono}`}>
                   <div className="col-span-2">Timestamp</div>
                   <div className="col-span-2">Actor</div>
-                  <div className="col-span-3">Action Trace</div>
+                  <div className="col-span-3">Action · Entity</div>
                   <div className="col-span-1">Status</div>
-                  <div className="col-span-4">Payload/Details</div>
+                  <div className="col-span-4">Payload / Diff</div>
                 </div>
 
                 {filtered.length === 0 && (
                   <div className="flex items-center justify-center py-20 text-[#94A3B8]">
-                    {search || statusFilter !== 'all' ? 'No events match the filter.' : 'No audit events yet.'}
+                    {search || statusFilter !== 'all' ? 'No events match the filter.' : 'No audit events recorded yet.'}
                   </div>
                 )}
 
@@ -180,7 +189,7 @@ export default function AdminAuditPage() {
                   {filtered.map((log) => (
                     <motion.div
                       variants={fadeUp}
-                      key={`${log.id}-${log.timestamp}`}
+                      key={log.id}
                       className="grid grid-cols-12 gap-4 px-4 py-3 hover:bg-white/5 transition-colors group border-l-2 border-transparent hover:border-[#313442] cursor-pointer"
                     >
                       <div className={`col-span-2 text-[#94A3B8] ${font.mono} text-xs my-auto`}>
@@ -190,11 +199,14 @@ export default function AdminAuditPage() {
                       </div>
                       <div className="col-span-2 flex items-center text-[#E2E8F0] font-medium break-all">
                         <div className={`mr-2 mt-0.5 w-2 h-2 rounded-full shrink-0 ${dotColor(log.status)}`} />
-                        {log.actor}
+                        <span className={`${font.mono} text-xs`}>{log.actor}</span>
                       </div>
-                      <div className={`col-span-3 flex items-center text-[#00D4FF] ${font.mono} break-all`}>
-                        <ChevronRight className="h-3 w-3 mr-1 opacity-50 shrink-0" />
-                        {log.action}
+                      <div className={`col-span-3 flex flex-col text-[#00D4FF] ${font.mono} break-all`}>
+                        <div className="flex items-center">
+                          <ChevronRight className="h-3 w-3 mr-1 opacity-50 shrink-0" />
+                          <span>{log.action}</span>
+                        </div>
+                        <span className="text-[10px] text-[#5A6B8B] ml-4">{log.entity}</span>
                       </div>
                       <div className="col-span-1 flex items-center">
                         <span className={`px-2 py-0.5 rounded text-[10px] uppercase font-bold tracking-wider ${statusColor(log.status)}`}>
@@ -211,12 +223,31 @@ export default function AdminAuditPage() {
             )}
           </div>
 
+          {/* Footer / Pagination */}
           <div className="p-3 bg-[#111827] border-t border-[#1E293B] flex items-center justify-between text-xs text-[#5A6B8B]">
             <div className="flex items-center gap-2">
               <Activity className="h-3 w-3" />
-              {isLoading ? 'Loading…' : `${filtered.length} events shown`}
+              {isLoading ? 'Loading…' : `${filtered.length} shown · ${total.toLocaleString()} total`}
             </div>
-            <div>{isLoading ? '…' : `${allEntries.length} total events merged`}</div>
+            <div className="flex items-center gap-2">
+              <Button
+                disabled={page <= 1 || isLoading}
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                variant="outline" size="sm"
+                className="border-[#1E293B] text-white hover:bg-white/5 bg-[#1B1F2C] disabled:opacity-40 h-7 px-3 text-xs"
+              >
+                Previous
+              </Button>
+              <span className="text-[#94A3B8]">Page {page} / {totalPages}</span>
+              <Button
+                disabled={page >= totalPages || isLoading}
+                onClick={() => setPage((p) => p + 1)}
+                variant="outline" size="sm"
+                className="border-[#1E293B] text-white hover:bg-white/5 bg-[#1B1F2C] disabled:opacity-40 h-7 px-3 text-xs"
+              >
+                Next
+              </Button>
+            </div>
           </div>
         </motion.div>
       </div>
